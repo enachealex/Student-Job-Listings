@@ -16,6 +16,168 @@ function initActiveNav() {
   });
 }
 
+const teacherAuthState = {
+  configured: false,
+  loading: false,
+  session: null,
+  isAuthenticated: false,
+  supabase: null,
+  listeners: [],
+};
+
+function closeOpenSettingsMenus() {
+  const menus = document.querySelectorAll('.settings-menu');
+  menus.forEach((menu) => {
+    const trigger = menu.querySelector('.settings-trigger');
+    const panel = menu.querySelector('.settings-panel');
+    menu.classList.remove('open');
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+    if (panel) {
+      panel.setAttribute('aria-hidden', 'true');
+    }
+  });
+}
+
+function notifyTeacherAuthChange() {
+  teacherAuthState.listeners.forEach((listener) => {
+    listener({
+      configured: teacherAuthState.configured,
+      loading: teacherAuthState.loading,
+      session: teacherAuthState.session,
+      isAuthenticated: teacherAuthState.isAuthenticated,
+    });
+  });
+}
+
+function onTeacherAuthChange(listener) {
+  if (typeof listener !== 'function') {
+    return;
+  }
+
+  teacherAuthState.listeners.push(listener);
+  listener({
+    configured: teacherAuthState.configured,
+    loading: teacherAuthState.loading,
+    session: teacherAuthState.session,
+    isAuthenticated: teacherAuthState.isAuthenticated,
+  });
+}
+
+async function initTeacherAuth() {
+  const authActionButton = document.getElementById('authActionButton');
+  const settingsUserStatus = document.getElementById('settingsUserStatus');
+  if (!authActionButton || !settingsUserStatus) {
+    return;
+  }
+
+  const config = globalThis.APP_CONFIG || {};
+  const supabaseUrl = config.supabaseUrl || '';
+  const supabaseAnonKey = config.supabaseAnonKey || '';
+
+  const updateSettingsAuthUi = (statusMessage = '') => {
+    if (!teacherAuthState.configured) {
+      settingsUserStatus.textContent = statusMessage || 'User access not configured';
+      authActionButton.textContent = 'Auth Unavailable';
+      authActionButton.disabled = true;
+      notifyTeacherAuthChange();
+      return;
+    }
+
+    const userEmail = teacherAuthState.session?.user?.email || '';
+    if (!teacherAuthState.session) {
+      settingsUserStatus.textContent = statusMessage || 'User: Not signed in';
+      authActionButton.textContent = 'Sign In';
+      authActionButton.disabled = false;
+      notifyTeacherAuthChange();
+      return;
+    }
+
+    settingsUserStatus.textContent = statusMessage || `Signed in: ${userEmail}`;
+    authActionButton.textContent = 'Sign Out';
+    authActionButton.disabled = false;
+    notifyTeacherAuthChange();
+  };
+
+  if (!supabaseUrl || !supabaseAnonKey || !globalThis.supabase?.createClient) {
+    teacherAuthState.configured = false;
+    teacherAuthState.session = null;
+    teacherAuthState.isAuthenticated = false;
+    updateSettingsAuthUi();
+    return;
+  }
+
+  teacherAuthState.supabase = globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey);
+  teacherAuthState.configured = true;
+
+  const refreshAuthState = async () => {
+    teacherAuthState.loading = true;
+    updateSettingsAuthUi('Checking session...');
+
+    const { data, error } = await teacherAuthState.supabase.auth.getSession();
+    if (error) {
+      teacherAuthState.loading = false;
+      teacherAuthState.session = null;
+      teacherAuthState.isAuthenticated = false;
+      updateSettingsAuthUi('Unable to verify session');
+      return;
+    }
+
+    teacherAuthState.session = data.session || null;
+    teacherAuthState.isAuthenticated = Boolean(teacherAuthState.session);
+    teacherAuthState.loading = false;
+    updateSettingsAuthUi();
+  };
+
+  authActionButton.addEventListener('click', async () => {
+    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      return;
+    }
+
+    authActionButton.disabled = true;
+
+    if (teacherAuthState.session) {
+      await teacherAuthState.supabase.auth.signOut();
+      teacherAuthState.session = null;
+      teacherAuthState.isAuthenticated = false;
+      authActionButton.disabled = false;
+      updateSettingsAuthUi('Signed out');
+      closeOpenSettingsMenus();
+      return;
+    }
+
+    const email = globalThis.prompt('Enter your email to receive a secure sign-in link:');
+    if (!email) {
+      authActionButton.disabled = false;
+      updateSettingsAuthUi();
+      return;
+    }
+
+    const { error } = await teacherAuthState.supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: globalThis.location.href,
+      },
+    });
+
+    authActionButton.disabled = false;
+    if (error) {
+      updateSettingsAuthUi('Sign-in failed. Check email and try again.');
+      return;
+    }
+
+    updateSettingsAuthUi('Check your email for a secure sign-in link.');
+    closeOpenSettingsMenus();
+  });
+
+  teacherAuthState.supabase.auth.onAuthStateChange(async () => {
+    await refreshAuthState();
+  });
+
+  await refreshAuthState();
+}
+
 function initThemeToggle() {
   const themeToggle = document.getElementById('themeToggle');
   const storageKey = 'ptaStudentJobHubTheme';
@@ -48,19 +210,7 @@ function initThemeToggle() {
     const nextTheme = isDark ? 'light' : 'dark';
     localStorage.setItem(storageKey, nextTheme);
     applyTheme(nextTheme);
-
-    const menu = themeToggle.closest('.settings-menu');
-    if (menu) {
-      const trigger = menu.querySelector('.settings-trigger');
-      const panel = menu.querySelector('.settings-panel');
-      menu.classList.remove('open');
-      if (trigger) {
-        trigger.setAttribute('aria-expanded', 'false');
-      }
-      if (panel) {
-        panel.setAttribute('aria-hidden', 'true');
-      }
-    }
+    closeOpenSettingsMenus();
   });
 }
 
@@ -181,6 +331,7 @@ function initJobsModal() {
   const detailsModal = document.getElementById('jobDetailsModal');
 
   const openBtn = document.getElementById('openUpload');
+  const teacherAccessNotice = document.getElementById('teacherAccessNotice');
   const closeBtn = document.getElementById('closeUpload');
   const cancelBtns = document.querySelectorAll('[data-close-modal]');
   const overlay = modal.querySelector('.modal-overlay');
@@ -221,6 +372,9 @@ function initJobsModal() {
   let currentDetailsJobId = null;
   let benefitItems = [];
   let editingBenefitIndex = null;
+  let canManageJobs = false;
+  let jobsCache = [];
+  let hasLoadedRemoteJobs = false;
 
   const stateCityOptions = {
     ID: ['Aberdeen', 'Acequia', 'Albion', 'American Falls', 'Ammon', 'Arco', 'Arimo', 'Ashton', 'Athol', 'Bancroft', 'Basalt', 'Bellevue', 'Blackfoot', 'Bliss', 'Bloomington', 'Boise', 'Bonners Ferry', 'Bovill', 'Buhl', 'Burley', 'Butte City', 'Caldwell', 'Cambridge', 'Carey', 'Cascade', 'Castleford', 'Challis', 'Chubbuck', 'Clark Fork', 'Clayton', 'Clifton', 'Coeur d\'Alene', 'Cottonwood', 'Council', 'Craigmont', 'Crouch', 'Culdesac', 'Dalton Gardens', 'Dayton', 'Deary', 'Declo', 'Dietrich', 'Donnelly', 'Dover', 'Downey', 'Driggs', 'Drummond', 'Dubois', 'Eagle', 'East Hope', 'Eden', 'Elk River', 'Emmett', 'Fairfield', 'Ferdinand', 'Fernan Lake Village', 'Filer', 'Firth', 'Franklin', 'Fruitland', 'Garden City', 'Genesee', 'Georgetown', 'Glenns Ferry', 'Gooding', 'Grace', 'Grand View', 'Grangeville', 'Greenleaf', 'Hagerman', 'Hailey', 'Hansen', 'Harrison', 'Hauser', 'Hayden', 'Hayden Lake', 'Hazelton', 'Heyburn', 'Hollister', 'Homedale', 'Hope', 'Horseshoe Bend', 'Huetter', 'Idaho City', 'Idaho Falls', 'Inkom', 'Iona', 'Irwin', 'Island Park', 'Jerome', 'Juliaetta', 'Kamiah', 'Kellogg', 'Kendrick', 'Ketchum', 'Kimberly', 'Kooskia', 'Kootenai', 'Kuna', 'Lapwai', 'Lava Hot Springs', 'Leadore', 'Lewiston', 'Lewisville', 'Lost River', 'Mackay', 'Malad City', 'Malta', 'Marsing', 'McCall', 'McCammon', 'Melba', 'Menan', 'Meridian', 'Midvale', 'Middleton', 'Minidoka', 'Montpelier', 'Moore', 'Moscow', 'Mountain Home', 'Moyie Springs', 'Mud Lake', 'Mullan', 'Murtaugh', 'Nampa', 'Nezperce', 'New Meadows', 'New Plymouth', 'Newdale', 'Notus', 'Oakley', 'Oldtown', 'Onaway', 'Orofino', 'Osburn', 'Oxford', 'Paris', 'Parma', 'Paul', 'Payette', 'Peck', 'Pierce', 'Pinehurst', 'Placerville', 'Plummer', 'Pocatello', 'Ponderay', 'Post Falls', 'Potlatch', 'Preston', 'Priest River', 'Rathdrum', 'Reubens', 'Rexburg', 'Richfield', 'Rigby', 'Riggins', 'Ririe', 'Roberts', 'Rockland', 'Rupert', 'St. Anthony', 'St. Charles', 'St. Maries', 'Salmon', 'Sandpoint', 'Shelley', 'Shoshone', 'Smelterville', 'Soda Springs', 'Spirit Lake', 'Spencer', 'Stanley', 'Star', 'State Line', 'Stites', 'Sugar City', 'Sun Valley', 'Swan Valley', 'Tensed', 'Tetonia', 'Teton', 'Troy', 'Twin Falls', 'Ucon', 'Victor', 'Wallace', 'Warm River', 'Weippe', 'Weiser', 'Wendell', 'Weston', 'White Bird', 'Wilder', 'Winchester', 'Worley'],
@@ -367,6 +521,74 @@ function initJobsModal() {
     localStorage.setItem(storageKey, JSON.stringify(jobs));
   };
 
+  const mapDbRowToJob = (row) => {
+    return normalizeJob({
+      id: row.id,
+      entryMode: row.entry_mode,
+      role: row.role,
+      organization: row.organization,
+      location: row.location,
+      state: row.state,
+      city: row.city,
+      type: row.type,
+      details: row.details,
+      sourceLabel: row.source_label,
+      postingUrl: row.posting_url,
+      phone: row.phone,
+      pay: row.pay == null ? '' : Number(row.pay),
+      benefits: Array.isArray(row.benefits) ? row.benefits : [],
+    });
+  };
+
+  const mapJobToDbRow = (job) => {
+    return {
+      id: job.id,
+      entry_mode: job.entryMode,
+      role: job.role,
+      organization: job.organization,
+      location: job.location,
+      state: job.state,
+      city: job.city,
+      type: job.type,
+      details: job.details,
+      source_label: job.sourceLabel,
+      posting_url: job.postingUrl || '',
+      phone: job.phone || '',
+      pay: job.pay === '' ? null : Number(job.pay),
+      benefits: job.benefits || [],
+      created_by: teacherAuthState.session?.user?.id || null,
+    };
+  };
+
+  const fetchRemoteJobs = async () => {
+    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      return null;
+    }
+
+    const { data, error } = await teacherAuthState.supabase
+      .from('jobs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !Array.isArray(data)) {
+      return null;
+    }
+
+    return data.map((row) => mapDbRowToJob(row));
+  };
+
+  const persistRemoteJob = async (job) => {
+    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      return {
+        error: new Error('Teacher backend is not configured.'),
+      };
+    }
+
+    return teacherAuthState.supabase
+      .from('jobs')
+      .upsert(mapJobToDbRow(job), { onConflict: 'id' });
+  };
+
   const decorateJobCard = (item, jobData) => {
     item.classList.add('clickable');
     item.setAttribute('role', 'button');
@@ -436,13 +658,25 @@ function initJobsModal() {
     return seededJobs;
   };
 
-  const getJobs = () => {
+  const initializeJobs = () => {
     const storedJobs = loadStoredJobs();
-    if (storedJobs.length > 0) {
-      return storedJobs;
+    jobsCache = storedJobs.length > 0 ? storedJobs : seedJobsFromDom();
+  };
+
+  const syncRemoteJobs = async () => {
+    const remoteJobs = await fetchRemoteJobs();
+    if (remoteJobs == null) {
+      return;
     }
 
-    return seedJobsFromDom();
+    jobsCache = remoteJobs;
+    saveStoredJobs(remoteJobs);
+    hasLoadedRemoteJobs = true;
+    renderJobs();
+  };
+
+  const getJobs = () => {
+    return jobsCache;
   };
 
   const findJobById = (jobId) => {
@@ -555,13 +789,24 @@ function initJobsModal() {
     });
   };
 
-  const upsertJob = (job) => {
+  const upsertJob = async (job) => {
     const normalizedJob = normalizeJob(job);
-    const jobs = getJobs();
-    const updatedJobs = editingJobId
-      ? jobs.map((existingJob) => (existingJob.id === normalizedJob.id ? normalizedJob : existingJob))
-      : [normalizedJob, ...jobs];
 
+    if (teacherAuthState.configured && teacherAuthState.supabase) {
+      const { error } = await persistRemoteJob(normalizedJob);
+      if (error) {
+        throw error;
+      }
+
+      await syncRemoteJobs();
+      return getJobs().find((existingJob) => existingJob.id === normalizedJob.id) || normalizedJob;
+    }
+
+    const updatedJobs = editingJobId
+      ? jobsCache.map((existingJob) => (existingJob.id === normalizedJob.id ? normalizedJob : existingJob))
+      : [normalizedJob, ...jobsCache];
+
+    jobsCache = updatedJobs;
     saveStoredJobs(updatedJobs);
     renderJobs();
     return normalizedJob;
@@ -662,6 +907,11 @@ function initJobsModal() {
   };
 
   const openCreateModal = () => {
+    if (!canManageJobs) {
+      showFlash('Sign in is required to add listings.', 'err');
+      return;
+    }
+
     editingJobId = null;
     resetJobForms();
     setUploadMode({ entryMode: 'url', isEditing: false });
@@ -676,6 +926,11 @@ function initJobsModal() {
   };
 
   const startEditingJob = (jobId) => {
+    if (!canManageJobs) {
+      showFlash('Sign in is required to edit listings.', 'err');
+      return;
+    }
+
     const job = findJobById(jobId);
     if (!job) {
       return;
@@ -715,7 +970,9 @@ function initJobsModal() {
     editingJobId = null;
     resetJobForms();
     setUploadMode({ entryMode: 'url', isEditing: false });
-    openBtn.focus();
+    if (openBtn && !openBtn.hidden) {
+      openBtn.focus();
+    }
   };
 
   const activateTab = (targetId) => {
@@ -736,6 +993,37 @@ function initJobsModal() {
     openDetailsModal(jobData);
   };
 
+  const setTeacherAccessState = (authState) => {
+    canManageJobs = Boolean(authState.configured && authState.session && authState.isAuthenticated);
+
+    if (openBtn) {
+      openBtn.hidden = !canManageJobs;
+      openBtn.disabled = !canManageJobs;
+    }
+
+    if (editJobDetailsBtn) {
+      editJobDetailsBtn.hidden = !canManageJobs;
+      editJobDetailsBtn.disabled = !canManageJobs;
+    }
+
+    if (!teacherAccessNotice) {
+      return;
+    }
+
+    if (!authState.configured) {
+      teacherAccessNotice.textContent = 'User sign-in is not configured yet.';
+      return;
+    }
+
+    if (canManageJobs) {
+      teacherAccessNotice.textContent = 'You are signed in. Posting and editing are enabled.';
+      return;
+    }
+
+    teacherAccessNotice.textContent = 'Sign in from Settings to add or edit listings. Visitors can view jobs only.';
+  };
+
+  initializeJobs();
   renderJobs();
   attachLocationDropdownBehavior(urlStateSelect, urlCitySelect);
   attachLocationDropdownBehavior(templateStateSelect, templateCitySelect);
@@ -751,11 +1039,18 @@ function initJobsModal() {
 
   if (editJobDetailsBtn) {
     editJobDetailsBtn.addEventListener('click', () => {
-      if (currentDetailsJobId) {
+      if (currentDetailsJobId && canManageJobs) {
         startEditingJob(currentDetailsJobId);
       }
     });
   }
+
+  onTeacherAuthChange((authState) => {
+    setTeacherAccessState(authState);
+    if (authState.configured && !hasLoadedRemoteJobs) {
+      syncRemoteJobs();
+    }
+  });
 
   cancelBtns.forEach((btn) => {
     btn.addEventListener('click', closeModal);
@@ -883,8 +1178,13 @@ function initJobsModal() {
     });
   }
 
-  urlForm.addEventListener('submit', (event) => {
+  urlForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (!canManageJobs) {
+      showFlash('Sign in is required to submit listings.', 'err');
+      return;
+    }
+
     const role = document.getElementById('urlRoleTitle').value.trim();
     const url = document.getElementById('jobUrl').value.trim();
     const organization = document.getElementById('urlOrganization').value.trim();
@@ -897,30 +1197,39 @@ function initJobsModal() {
       return;
     }
 
-    const savedJob = upsertJob({
-      id: editingJobId || generateJobId(),
-      entryMode: 'url',
-      role,
-      organization,
-      location,
-      state,
-      city,
-      type: 'URL',
-      details: url,
-      sourceLabel: 'URL upload',
-      postingUrl: url,
-      phone: '',
-      pay: '',
-      payBenefits: '',
-    });
+    try {
+      const savedJob = await upsertJob({
+        id: editingJobId || generateJobId(),
+        entryMode: 'url',
+        role,
+        organization,
+        location,
+        state,
+        city,
+        type: 'URL',
+        details: url,
+        sourceLabel: 'URL upload',
+        postingUrl: url,
+        phone: '',
+        pay: '',
+        payBenefits: '',
+      });
 
-    closeModal();
-    showFlash(editingJobId ? 'URL listing updated successfully.' : 'URL listing added successfully. You can publish another one.', 'ok');
-    openDetailsModal(savedJob);
+      closeModal();
+      showFlash(editingJobId ? 'URL listing updated successfully.' : 'URL listing added successfully. You can publish another one.', 'ok');
+      openDetailsModal(savedJob);
+    } catch {
+      showFlash('Unable to save URL listing. Verify teacher permissions and Supabase setup.', 'err');
+    }
   });
 
-  templateForm.addEventListener('submit', (event) => {
+  templateForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (!canManageJobs) {
+      showFlash('Sign in is required to submit listings.', 'err');
+      return;
+    }
+
     commitBenefitInput();
     const role = document.getElementById('role').value.trim();
     const organization = document.getElementById('organization').value.trim();
@@ -937,32 +1246,37 @@ function initJobsModal() {
       return;
     }
 
-    const savedJob = upsertJob({
-      id: editingJobId || generateJobId(),
-      entryMode: 'template',
-      role,
-      organization,
-      location,
-      state,
-      city,
-      type,
-      details,
-      sourceLabel: 'template form',
-      postingUrl: '',
-      phone,
-      pay: payValue,
-      benefits: [...benefitItems],
-    });
+    try {
+      const savedJob = await upsertJob({
+        id: editingJobId || generateJobId(),
+        entryMode: 'template',
+        role,
+        organization,
+        location,
+        state,
+        city,
+        type,
+        details,
+        sourceLabel: 'template form',
+        postingUrl: '',
+        phone,
+        pay: payValue,
+        benefits: [...benefitItems],
+      });
 
-    closeModal();
-    showFlash(editingJobId ? 'Listing updated successfully.' : 'Template listing created. It now appears in current listings.', 'ok');
-    openDetailsModal(savedJob);
+      closeModal();
+      showFlash(editingJobId ? 'Listing updated successfully.' : 'Template listing created. It now appears in current listings.', 'ok');
+      openDetailsModal(savedJob);
+    } catch {
+      showFlash('Unable to save template listing. Verify teacher permissions and Supabase setup.', 'err');
+    }
   });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initSettingsMenu();
   initThemeToggle();
+  initTeacherAuth();
   setCurrentYear();
   initActiveNav();
   initQuickGuideTooltip();

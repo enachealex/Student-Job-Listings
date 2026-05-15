@@ -199,6 +199,28 @@ img {
   background: rgba(152, 0, 46, 0.12);
 }
 
+.settings-user {
+  margin: 0;
+  padding: 0.3rem 0.15rem 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.settings-auth-btn {
+  width: 100%;
+  padding: 0.58rem 0.72rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.settings-auth-btn:hover {
+  background: rgba(152, 0, 46, 0.12);
+}
+
 .theme-toggle:disabled {
   opacity: 0.72;
   cursor: not-allowed;
@@ -229,7 +251,8 @@ img {
 }
 
 .settings-trigger:focus-visible,
-.theme-toggle:focus-visible {
+.theme-toggle:focus-visible,
+.settings-auth-btn:focus-visible {
   outline: none;
   box-shadow: var(--ring);
 }
@@ -259,7 +282,14 @@ img {
 }
 
 .settings-menu.open .settings-panel {
-  display: block;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.teacher-access-note {
+  margin: 0.65rem 0 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 
@@ -969,7 +999,8 @@ select:disabled {
 body[data-theme="dark"] .nav-link,
 body[data-theme="dark"] .settings-trigger,
 body[data-theme="dark"] .settings-panel,
-body[data-theme="dark"] .theme-toggle {
+body[data-theme="dark"] .theme-toggle,
+body[data-theme="dark"] .settings-auth-btn {
   border-color: #374151;
 }
 
@@ -1096,6 +1127,7 @@ textarea {
   .settings-trigger,
   .settings-panel,
   .theme-toggle,
+  .settings-auth-btn,
   body {
     transition: none !important;
   }
