@@ -163,7 +163,6 @@ img {
   align-items: center;
   gap: 0.5rem;
   position: relative;
-  padding-right: 3.2rem;
 }
 
 .nav-link {
@@ -206,22 +205,22 @@ img {
 }
 
 .settings-menu {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
+  position: relative;
+  margin-left: auto;
   flex: 0 0 auto;
 }
 
 .settings-trigger {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.5rem 0.72rem;
   border-radius: 10px;
   color: var(--muted);
   background: var(--surface-2);
   border: 1px solid #d9cdd1;
+  font-weight: 600;
 }
 
 .settings-trigger:hover {
@@ -229,8 +228,19 @@ img {
   color: var(--text);
 }
 
+.settings-trigger:focus-visible,
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
 .settings-dots {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.settings-label {
+  font-size: 0.9rem;
   line-height: 1;
 }
 
@@ -238,7 +248,7 @@ img {
   position: absolute;
   top: calc(100% + 0.45rem);
   right: 0;
-  min-width: 160px;
+  min-width: 188px;
   padding: 0.45rem;
   border-radius: 12px;
   border: 1px solid #d9cdd1;
@@ -1120,17 +1130,21 @@ textarea {
 
   .nav-links {
     width: 100%;
-    justify-content: space-between;
-    padding-right: 3rem;
+    justify-content: flex-start;
+    gap: 0.4rem;
   }
 
   .nav-link {
-    flex: 1;
+    flex: 0 0 auto;
     text-align: center;
   }
 
   .settings-menu {
-    margin-left: 0;
+    margin-left: auto;
+  }
+
+  .settings-label {
+    display: none;
   }
 
   .grid.cols-3,

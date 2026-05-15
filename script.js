@@ -48,6 +48,19 @@ function initThemeToggle() {
     const nextTheme = isDark ? 'light' : 'dark';
     localStorage.setItem(storageKey, nextTheme);
     applyTheme(nextTheme);
+
+    const menu = themeToggle.closest('.settings-menu');
+    if (menu) {
+      const trigger = menu.querySelector('.settings-trigger');
+      const panel = menu.querySelector('.settings-panel');
+      menu.classList.remove('open');
+      if (trigger) {
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+      if (panel) {
+        panel.setAttribute('aria-hidden', 'true');
+      }
+    }
   });
 }
 
