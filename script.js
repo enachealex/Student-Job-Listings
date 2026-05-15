@@ -252,7 +252,10 @@ function initLoginPage() {
     if (authState.session) {
       renderMessage('Signed in. Redirecting...');
       globalThis.location.href = '/jobs';
+      return;
     }
+
+    renderMessage('Sign in with an approved account to manage listings.');
   });
 
   loginForm.addEventListener('submit', async (event) => {
@@ -312,6 +315,12 @@ function initChangePasswordPage() {
     if (!authState.session) {
       renderMessage('Please sign in first. Redirecting...');
       globalThis.location.href = '/login';
+      return;
+    }
+
+    if (!authState.mustChangePassword) {
+      renderMessage('Password already updated. Redirecting...');
+      globalThis.location.href = '/jobs';
     }
   });
 
@@ -386,7 +395,10 @@ function initAdminUsersPage() {
 
     if (!authState.isAdmin) {
       renderMessage('Only the admin account can add users.', true);
+      return;
     }
+
+    renderMessage('Create an approved user with a temporary password.');
   });
 
   form.addEventListener('submit', async (event) => {
@@ -430,7 +442,11 @@ function initAdminUsersPage() {
     });
 
     if (!response.ok) {
-      renderMessage('Unable to create user. Confirm edge function deployment and admin permissions.', true);
+      const errorText = (await response.text()).trim();
+      renderMessage(
+        errorText || 'Unable to create user. Confirm edge function deployment and admin permissions.',
+        true,
+      );
       return;
     }
 
