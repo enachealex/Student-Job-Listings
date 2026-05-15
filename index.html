@@ -14,22 +14,41 @@
       href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body data-page="home">
     <header class="site-header">
       <div class="container header-inner">
-        <a class="brand" href="index.html" aria-label="PTA Student Job Hub home">
+        <a class="brand" href="/" aria-label="PTA Student Job Hub home">
           <span class="brand-mark">PT</span>
           <span>PTA Student Job Hub</span>
         </a>
         <nav class="nav-links" aria-label="Main navigation">
-          <a class="nav-link" data-page="home" href="index.html">Home</a>
-          <a class="nav-link" data-page="about" href="about.html">About</a>
-          <a class="nav-link" data-page="jobs" href="jobs.html">Jobs</a>
-          <button class="theme-toggle" id="themeToggle" type="button" aria-label="Dark Mode" aria-pressed="false">
-            Dark Mode
-          </button>
+          <a class="nav-link" data-page="home" href="/">Home</a>
+          <a class="nav-link" data-page="about" href="/about">About</a>
+          <a class="nav-link" data-page="jobs" href="/jobs">Jobs</a>
+          <div class="settings-menu">
+            <button
+              class="settings-trigger"
+              type="button"
+              aria-label="Open settings menu"
+              aria-expanded="false"
+              aria-haspopup="menu"
+            >
+              <span class="settings-dots" aria-hidden="true">&vellip;</span>
+            </button>
+            <div class="settings-panel" aria-hidden="true">
+              <button
+                class="theme-toggle"
+                id="themeToggle"
+                type="button"
+                aria-label="Dark Mode"
+                aria-pressed="false"
+              >
+                Dark Mode
+              </button>
+            </div>
+          </div>
         </nav>
       </div>
     </header>
@@ -52,8 +71,8 @@
                 <span class="pill">Student-Centered Design</span>
               </div>
               <div class="cta-row">
-                <a class="btn btn-primary" href="jobs.html">Post or View Jobs</a>
-                <a class="btn btn-muted" href="about.html">Learn the Mission</a>
+                <a class="btn btn-primary" href="/jobs">Post or View Jobs</a>
+                <a class="btn btn-muted" href="/about">Learn the Mission</a>
               </div>
             </div>
             <aside class="hero-panel reveal reveal-delay-1" aria-label="Quick notes">
@@ -124,6 +143,6 @@
       </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="/script.js"></script>
   </body>
 </html>
