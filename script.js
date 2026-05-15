@@ -78,9 +78,9 @@ async function initTeacherAuth() {
 
   const updateSettingsAuthUi = (statusMessage = '') => {
     if (!teacherAuthState.configured) {
-      settingsUserStatus.textContent = statusMessage || 'User access not configured';
-      authActionButton.textContent = 'Auth Unavailable';
-      authActionButton.disabled = true;
+      settingsUserStatus.textContent = statusMessage || 'Sign-in setup in progress';
+      authActionButton.textContent = 'Sign In';
+      authActionButton.disabled = false;
       notifyTeacherAuthChange();
       return;
     }
@@ -132,6 +132,7 @@ async function initTeacherAuth() {
 
   authActionButton.addEventListener('click', async () => {
     if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      settingsUserStatus.textContent = 'Sign-in is not configured yet.';
       return;
     }
 
@@ -331,6 +332,7 @@ function initJobsModal() {
   const detailsModal = document.getElementById('jobDetailsModal');
 
   const openBtn = document.getElementById('openUpload');
+  const quickGuideWrap = document.querySelector('.guide-tooltip-wrap');
   const teacherAccessNotice = document.getElementById('teacherAccessNotice');
   const closeBtn = document.getElementById('closeUpload');
   const cancelBtns = document.querySelectorAll('[data-close-modal]');
@@ -1001,6 +1003,10 @@ function initJobsModal() {
       openBtn.disabled = !canManageJobs;
     }
 
+    if (quickGuideWrap) {
+      quickGuideWrap.hidden = !canManageJobs;
+    }
+
     if (editJobDetailsBtn) {
       editJobDetailsBtn.hidden = !canManageJobs;
       editJobDetailsBtn.disabled = !canManageJobs;
@@ -1010,8 +1016,10 @@ function initJobsModal() {
       return;
     }
 
+    teacherAccessNotice.hidden = !canManageJobs;
+
     if (!authState.configured) {
-      teacherAccessNotice.textContent = 'User sign-in is not configured yet.';
+      teacherAccessNotice.textContent = '';
       return;
     }
 
@@ -1020,7 +1028,7 @@ function initJobsModal() {
       return;
     }
 
-    teacherAccessNotice.textContent = 'Sign in from Settings to add or edit listings. Visitors can view jobs only.';
+    teacherAccessNotice.textContent = '';
   };
 
   initializeJobs();
