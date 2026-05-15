@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Post and browse Idaho Physical Therapy Assistant job listings for college students."
+    />
+    <title>PTA Student Job Hub | Jobs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="jobs">
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="index.html" aria-label="PTA Student Job Hub home">
+          <span class="brand-mark">PT</span>
+          <span>PTA Student Job Hub</span>
+        </a>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a class="nav-link" data-page="home" href="index.html">Home</a>
+          <a class="nav-link" data-page="about" href="about.html">About</a>
+          <a class="nav-link" data-page="jobs" href="jobs.html">Jobs</a>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="Dark Mode" aria-pressed="false">
+            Dark Mode
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <section class="hero reveal">
+          <div class="hero-content">
+            <div>
+              <p class="eyebrow">PTA Jobs Board</p>
+              <h1>Opportunities for Physical Therapy Assistant Students</h1>
+              <div class="cta-row">
+                <button class="btn btn-primary" id="openUpload" type="button">
+                  Upload Job Listing
+                </button>
+                <div class="guide-tooltip-wrap">
+                  <button
+                    class="btn btn-muted guide-trigger"
+                    id="quickGuideTrigger"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="quickGuideTooltip"
+                  >
+                    Quick Posting Guide
+                  </button>
+                  <aside
+                    class="guide-tooltip"
+                    id="quickGuideTooltip"
+                    role="tooltip"
+                    aria-labelledby="quickGuideTitle"
+                    aria-hidden="true"
+                  >
+                    <h2 id="quickGuideTitle">Quick Posting Guide</h2>
+                    <p>
+                      Select Upload Job Listing, choose your posting method, and submit.
+                      New entries appear instantly in Current Listings.
+                    </p>
+                    <ol class="guide-steps">
+                      <li>Open Upload</li>
+                      <li>Choose URL or Template</li>
+                      <li>Submit and Publish</li>
+                    </ol>
+                  </aside>
+                </div>
+              </div>
+            </div>
+            <aside class="hero-panel reveal reveal-delay-2" aria-label="Posting process summary">
+              <strong>Graduating Soon?</strong>
+              <p>
+                Explore Idaho PTA openings from faculty posted links and detailed
+                listings built for college students preparing to enter practice.
+              </p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section">
+          <section class="listings reveal reveal-delay-1" aria-labelledby="currentListingsTitle">
+            <h2 id="currentListingsTitle">Current Listings</h2>
+            <p class="section-subtitle">
+              These opportunities are for PTA students searching for
+              jobs.
+            </p>
+            <ul class="jobs-list" id="jobsList" aria-live="polite">
+              <li class="job-item">
+                <div class="job-item-head">
+                  <div class="job-heading-stack">
+                    <p class="job-organization">Riverbend Rehabilitation</p>
+                    <h3 class="job-role">PTA Student Assistant</h3>
+                  </div>
+                  <span class="job-tag">Part-Time</span>
+                </div>
+                <p class="job-location">Coeur d'Alene, ID</p>
+                <p class="job-notes">
+                  Support licensed therapists with patient prep, mobility activities, and
+                  documentation support in an outpatient setting.
+                </p>
+                <p class="job-notes">Posted via template form</p>
+              </li>
+              <li class="job-item">
+                <div class="job-item-head">
+                  <div class="job-heading-stack">
+                    <p class="job-organization">Summit Ortho Care</p>
+                    <h3 class="job-role">PTA Rehab Technician</h3>
+                  </div>
+                  <span class="job-tag">Clinical</span>
+                </div>
+                <p class="job-location">Boise, ID</p>
+                <p class="job-notes">
+                  Assist with therapeutic exercise flow, treatment room turnover, and
+                  patient education resources for a fast-moving clinic.
+                </p>
+                <p class="job-notes">Posted via URL upload</p>
+              </li>
+            </ul>
+          </section>
+        </section>
+      </div>
+    </main>
+
+    <dialog class="modal" id="uploadModal" aria-hidden="true" aria-labelledby="uploadHeading">
+      <div class="modal-overlay" aria-hidden="true"></div>
+      <div class="modal-card">
+        <div class="modal-top">
+          <h3 id="uploadHeading">Upload a Job Listing</h3>
+          <button class="close-btn" id="closeUpload" type="button" aria-label="Close upload dialog">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+
+        <div class="tab-row" role="tablist" aria-label="Upload options">
+          <button class="tab-btn" data-target="urlPanel" role="tab" aria-selected="true" type="button">
+            Upload by URL
+          </button>
+          <button class="tab-btn" data-target="templatePanel" role="tab" aria-selected="false" type="button">
+            Create with Template
+          </button>
+        </div>
+
+        <section class="tab-panel active" id="urlPanel" role="tabpanel">
+          <form id="urlForm">
+            <div class="form-grid">
+              <div class="field full">
+                <label for="urlRoleTitle">Job Title</label>
+                <input id="urlRoleTitle" name="urlRoleTitle" type="text" placeholder="PTA Rehab Technician" required />
+              </div>
+              <div class="field full">
+                <label for="jobUrl">Job Posting URL</label>
+                <input id="jobUrl" name="jobUrl" type="url" placeholder="https://exampleclinic.com/careers/pta-role" required />
+              </div>
+              <div class="field full">
+                <label for="urlOrganization">Organization</label>
+                <input id="urlOrganization" name="urlOrganization" type="text" placeholder="Clinic or Healthcare Organization" required />
+              </div>
+              <div class="field">
+                <label for="urlState">State</label>
+                <select id="urlState" name="urlState" required>
+                  <option value="">Select state</option>
+                  <option value="ID">Idaho</option>
+                  <option value="WA">Washington</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="urlCity">City</label>
+                <select id="urlCity" name="urlCity" required disabled>
+                  <option value="">Select city</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-muted" data-close-modal>Cancel</button>
+              <button type="submit" class="btn btn-primary">Add URL Listing</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="tab-panel" id="templatePanel" role="tabpanel">
+          <form id="templateForm">
+            <div class="form-grid">
+              <div class="field">
+                <label for="role">Role Title</label>
+                <input id="role" name="role" type="text" placeholder="PTA Student Assistant" required />
+              </div>
+              <div class="field">
+                <label for="organization">Organization</label>
+                <input id="organization" name="organization" type="text" placeholder="Organization name" required />
+              </div>
+              <div class="field">
+                <label for="state">State</label>
+                <select id="state" name="state" required>
+                  <option value="">Select state</option>
+                  <option value="ID">Idaho</option>
+                  <option value="WA">Washington</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="city">City</label>
+                <select id="city" name="city" required disabled>
+                  <option value="">Select city</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="employmentType">Employment Type</label>
+                <select id="employmentType" name="employmentType" required>
+                  <option value="">Select type</option>
+                  <option value="Part-Time">Part-Time</option>
+                  <option value="Full-Time">Full-Time</option>
+                  <option value="Clinical">Clinical</option>
+                  <option value="Internship">Internship</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="description">Job Description</label>
+                <textarea id="description" name="description" placeholder="Describe duties, required skills, and ideal student profile." required></textarea>
+              </div>
+              <div class="field">
+                <label for="contactPhone">Contact Phone</label>
+                <input id="contactPhone" name="contactPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" pattern="\(\d{3}\) \d{3}-\d{4}" placeholder="(208) 555-0123" />
+              </div>
+              <div class="field">
+                <label for="payRate">Pay</label>
+                <input id="payRate" name="payRate" type="number" min="0" step="0.01" placeholder="25.00" />
+              </div>
+              <div class="field full">
+                <label for="benefitInput">Benefits</label>
+                <input id="benefitInput" name="benefitInput" type="text" placeholder="Type a benefit and press Enter" />
+                <ul class="benefits-editor-list" id="benefitsEditorList" aria-live="polite"></ul>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-muted" data-close-modal>Cancel</button>
+              <button id="templateSubmitButton" type="submit" class="btn btn-primary">Create Listing</button>
+            </div>
+          </form>
+        </section>
+
+        <p class="flash" id="flashMessage" aria-live="polite"></p>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="jobDetailsModal" aria-hidden="true" aria-labelledby="jobDetailsHeading">
+      <div class="modal-overlay" aria-hidden="true"></div>
+      <div class="modal-card job-details-card">
+        <div class="modal-top">
+          <h3 id="jobDetailsHeading">Job Listing Details</h3>
+          <div class="modal-top-actions">
+            <button class="btn btn-muted modal-edit-btn" id="editJobDetails" type="button">Edit Listing</button>
+            <button class="close-btn" id="closeJobDetails" type="button" aria-label="Close job details">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="job-details-layout single-column">
+          <section class="job-details-info" aria-label="Job details panel">
+            <p class="details-kicker" id="detailsType">Listing</p>
+            <p class="details-organization" id="detailsOrganization">Organization</p>
+            <h4 class="details-title" id="detailsRole">PTA Role</h4>
+            <p class="details-meta" id="detailsMeta">Location</p>
+            <p class="details-description" id="detailsDescription">No description provided.</p>
+            <div class="details-section" id="detailsPhoneSection" hidden>
+              <h5 class="details-section-title">Contact Phone</h5>
+              <p class="details-section-body" id="detailsPhone">(208) 555-0123</p>
+            </div>
+            <div class="details-section" id="detailsPaySection" hidden>
+              <h5 class="details-section-title">Pay</h5>
+              <p class="details-section-body" id="detailsPay">$25.00</p>
+            </div>
+            <div class="details-section" id="detailsBenefitsSection" hidden>
+              <h5 class="details-section-title">Benefits</h5>
+              <ul class="details-benefits-list" id="detailsBenefitsList"></ul>
+            </div>
+            <p class="details-source" id="detailsSource">Posted via listing</p>
+            <a class="btn btn-primary details-link" id="detailsOpenLink" href="#" target="_blank" rel="noopener noreferrer">
+              Open Original Job Posting
+            </a>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
+    <footer class="footer">
+      <div class="container">
+        <small>PTA Student Job Hub | <span data-year></span></small>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
