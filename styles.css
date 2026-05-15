@@ -98,7 +98,10 @@ body[data-theme="dark"]::after {
 .stat-card,
 .timeline-item,
 .alert,
-.nav-link {
+.nav-link,
+.settings-trigger,
+.settings-panel,
+.theme-toggle {
   transition: background-color 0.5s ease, color 0.45s ease, border-color 0.45s ease, box-shadow 0.5s ease;
 }
 
@@ -181,22 +184,67 @@ img {
 }
 
 .theme-toggle {
-  padding: 0.55rem 0.85rem;
-  border-radius: 10px;
+  width: 100%;
+  padding: 0.58rem 0.72rem;
+  border-radius: 8px;
   font-weight: 600;
-  color: var(--muted);
-  background: var(--surface-2);
-  border: 1px solid #d9cdd1;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .theme-toggle:hover {
   background: rgba(152, 0, 46, 0.12);
-  color: var(--text);
 }
 
 .theme-toggle:disabled {
   opacity: 0.72;
   cursor: not-allowed;
+}
+
+.settings-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.settings-trigger {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid #d9cdd1;
+}
+
+.settings-trigger:hover {
+  background: rgba(152, 0, 46, 0.12);
+  color: var(--text);
+}
+
+.settings-dots {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  min-width: 160px;
+  padding: 0.45rem;
+  border-radius: 12px;
+  border: 1px solid #d9cdd1;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  display: none;
+  z-index: 25;
+}
+
+.settings-menu.open .settings-panel {
+  display: block;
 }
 
 
@@ -904,6 +952,8 @@ select:disabled {
 }
 
 body[data-theme="dark"] .nav-link,
+body[data-theme="dark"] .settings-trigger,
+body[data-theme="dark"] .settings-panel,
 body[data-theme="dark"] .theme-toggle {
   border-color: #374151;
 }
@@ -1028,6 +1078,9 @@ textarea {
   .timeline-item,
   .alert,
   .nav-link,
+  .settings-trigger,
+  .settings-panel,
+  .theme-toggle,
   body {
     transition: none !important;
   }
@@ -1068,6 +1121,10 @@ textarea {
   .nav-link {
     flex: 1;
     text-align: center;
+  }
+
+  .settings-menu {
+    margin-left: 0.35rem;
   }
 
   .grid.cols-3,

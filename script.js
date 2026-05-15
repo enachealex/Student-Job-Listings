@@ -51,6 +51,76 @@ function initThemeToggle() {
   });
 }
 
+function initSettingsMenu() {
+  const menus = document.querySelectorAll('.settings-menu');
+  if (!menus.length) {
+    return;
+  }
+
+  const closeMenu = (menu) => {
+    const trigger = menu.querySelector('.settings-trigger');
+    const panel = menu.querySelector('.settings-panel');
+    menu.classList.remove('open');
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+    if (panel) {
+      panel.setAttribute('aria-hidden', 'true');
+    }
+  };
+
+  const openMenu = (menu) => {
+    const trigger = menu.querySelector('.settings-trigger');
+    const panel = menu.querySelector('.settings-panel');
+    menu.classList.add('open');
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+    if (panel) {
+      panel.setAttribute('aria-hidden', 'false');
+    }
+  };
+
+  const closeAllMenus = () => {
+    menus.forEach((menu) => closeMenu(menu));
+  };
+
+  menus.forEach((menu) => {
+    const trigger = menu.querySelector('.settings-trigger');
+    const panel = menu.querySelector('.settings-panel');
+    if (!trigger || !panel) {
+      return;
+    }
+
+    trigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const shouldOpen = !menu.classList.contains('open');
+      closeAllMenus();
+      if (shouldOpen) {
+        openMenu(menu);
+      }
+    });
+
+    panel.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('.settings-menu')) {
+      return;
+    }
+
+    closeAllMenus();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeAllMenus();
+    }
+  });
+}
+
 function initQuickGuideTooltip() {
   const trigger = document.getElementById('quickGuideTrigger');
   const tooltip = document.getElementById('quickGuideTooltip');
@@ -878,6 +948,7 @@ function initJobsModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initSettingsMenu();
   initThemeToggle();
   setCurrentYear();
   initActiveNav();
