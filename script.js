@@ -103,6 +103,7 @@ async function initTeacherAuth() {
   const config = globalThis.APP_CONFIG || {};
   const supabaseUrl = config.supabaseUrl || '';
   const supabaseAnonKey = config.supabaseAnonKey || '';
+  const hasRuntimeAuthConfig = Boolean(supabaseUrl && supabaseAnonKey && globalThis.supabase?.createClient);
 
   const updateSettingsAuthUi = (statusMessage = '') => {
     if (manageUsersButton) {
@@ -132,18 +133,18 @@ async function initTeacherAuth() {
     notifyTeacherAuthChange();
   };
 
-  if (!supabaseUrl || !supabaseAnonKey || !globalThis.supabase?.createClient) {
-    teacherAuthState.configured = false;
+  teacherAuthState.configured = hasRuntimeAuthConfig;
+  teacherAuthState.supabase = hasRuntimeAuthConfig
+    ? globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey)
+    : null;
+
+  if (!hasRuntimeAuthConfig) {
     teacherAuthState.session = null;
     teacherAuthState.isAuthenticated = false;
     teacherAuthState.isAdmin = false;
     teacherAuthState.mustChangePassword = false;
     updateSettingsAuthUi();
-    return;
   }
-
-  teacherAuthState.supabase = globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey);
-  teacherAuthState.configured = true;
 
   const refreshAuthState = async () => {
     teacherAuthState.loading = true;
@@ -184,6 +185,7 @@ async function initTeacherAuth() {
 
   authActionButton.addEventListener('click', async () => {
     if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      closeOpenSettingsMenus();
       globalThis.location.href = '/login';
       return;
     }
@@ -207,11 +209,13 @@ async function initTeacherAuth() {
     globalThis.location.href = '/login';
   });
 
-  teacherAuthState.supabase.auth.onAuthStateChange(async () => {
-    await refreshAuthState();
-  });
+  if (teacherAuthState.configured) {
+    teacherAuthState.supabase.auth.onAuthStateChange(async () => {
+      await refreshAuthState();
+    });
 
-  await refreshAuthState();
+    await refreshAuthState();
+  }
 }
 
 function initLoginPage() {
