@@ -21,9 +21,32 @@ const teacherAuthState = {
   loading: false,
   session: null,
   isAuthenticated: false,
+  isAdmin: false,
+  mustChangePassword: false,
   supabase: null,
   listeners: [],
 };
+
+function getAdminEmail() {
+  const configuredAdmin = (globalThis.APP_CONFIG?.adminEmail || '').trim().toLowerCase();
+  return configuredAdmin || 'enachealex1@gmail.com';
+}
+
+function getPathname() {
+  return (globalThis.location?.pathname || '/').replace(/\/+$/, '') || '/';
+}
+
+function isLoginPage() {
+  return getPathname() === '/login';
+}
+
+function isChangePasswordPage() {
+  return getPathname() === '/change-password';
+}
+
+function isAdminUsersPage() {
+  return getPathname() === '/admin-users';
+}
 
 function closeOpenSettingsMenus() {
   const menus = document.querySelectorAll('.settings-menu');
@@ -47,6 +70,8 @@ function notifyTeacherAuthChange() {
       loading: teacherAuthState.loading,
       session: teacherAuthState.session,
       isAuthenticated: teacherAuthState.isAuthenticated,
+      isAdmin: teacherAuthState.isAdmin,
+      mustChangePassword: teacherAuthState.mustChangePassword,
     });
   });
 }
@@ -62,12 +87,15 @@ function onTeacherAuthChange(listener) {
     loading: teacherAuthState.loading,
     session: teacherAuthState.session,
     isAuthenticated: teacherAuthState.isAuthenticated,
+    isAdmin: teacherAuthState.isAdmin,
+    mustChangePassword: teacherAuthState.mustChangePassword,
   });
 }
 
 async function initTeacherAuth() {
   const authActionButton = document.getElementById('authActionButton');
   const settingsUserStatus = document.getElementById('settingsUserStatus');
+  const manageUsersButton = document.getElementById('manageUsersButton');
   if (!authActionButton || !settingsUserStatus) {
     return;
   }
@@ -77,6 +105,10 @@ async function initTeacherAuth() {
   const supabaseAnonKey = config.supabaseAnonKey || '';
 
   const updateSettingsAuthUi = (statusMessage = '') => {
+    if (manageUsersButton) {
+      manageUsersButton.classList.toggle('hidden', !teacherAuthState.isAdmin);
+    }
+
     if (!teacherAuthState.configured) {
       settingsUserStatus.textContent = statusMessage || 'Sign-in setup in progress';
       authActionButton.textContent = 'Sign In';
@@ -104,6 +136,8 @@ async function initTeacherAuth() {
     teacherAuthState.configured = false;
     teacherAuthState.session = null;
     teacherAuthState.isAuthenticated = false;
+    teacherAuthState.isAdmin = false;
+    teacherAuthState.mustChangePassword = false;
     updateSettingsAuthUi();
     return;
   }
@@ -120,19 +154,37 @@ async function initTeacherAuth() {
       teacherAuthState.loading = false;
       teacherAuthState.session = null;
       teacherAuthState.isAuthenticated = false;
+      teacherAuthState.isAdmin = false;
+      teacherAuthState.mustChangePassword = false;
       updateSettingsAuthUi('Unable to verify session');
       return;
     }
 
     teacherAuthState.session = data.session || null;
     teacherAuthState.isAuthenticated = Boolean(teacherAuthState.session);
+    const userEmail = (teacherAuthState.session?.user?.email || '').toLowerCase();
+    teacherAuthState.isAdmin = Boolean(teacherAuthState.session && userEmail === getAdminEmail());
+    teacherAuthState.mustChangePassword = Boolean(teacherAuthState.session?.user?.user_metadata?.must_change_password);
     teacherAuthState.loading = false;
     updateSettingsAuthUi();
+
+    if (teacherAuthState.mustChangePassword && !isChangePasswordPage() && !isLoginPage()) {
+      globalThis.location.href = '/change-password';
+      return;
+    }
+
+    if (teacherAuthState.isAuthenticated && isLoginPage() && !teacherAuthState.mustChangePassword) {
+      globalThis.location.href = '/jobs';
+    }
+
+    if (isAdminUsersPage() && (!teacherAuthState.isAuthenticated || !teacherAuthState.isAdmin)) {
+      globalThis.location.href = '/';
+    }
   };
 
   authActionButton.addEventListener('click', async () => {
     if (!teacherAuthState.configured || !teacherAuthState.supabase) {
-      settingsUserStatus.textContent = 'Sign-in is not configured yet.';
+      globalThis.location.href = '/login';
       return;
     }
 
@@ -142,34 +194,17 @@ async function initTeacherAuth() {
       await teacherAuthState.supabase.auth.signOut();
       teacherAuthState.session = null;
       teacherAuthState.isAuthenticated = false;
+      teacherAuthState.isAdmin = false;
+      teacherAuthState.mustChangePassword = false;
       authActionButton.disabled = false;
       updateSettingsAuthUi('Signed out');
       closeOpenSettingsMenus();
       return;
     }
 
-    const email = globalThis.prompt('Enter your email to receive a secure sign-in link:');
-    if (!email) {
-      authActionButton.disabled = false;
-      updateSettingsAuthUi();
-      return;
-    }
-
-    const { error } = await teacherAuthState.supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: globalThis.location.href,
-      },
-    });
-
     authActionButton.disabled = false;
-    if (error) {
-      updateSettingsAuthUi('Sign-in failed. Check email and try again.');
-      return;
-    }
-
-    updateSettingsAuthUi('Check your email for a secure sign-in link.');
     closeOpenSettingsMenus();
+    globalThis.location.href = '/login';
   });
 
   teacherAuthState.supabase.auth.onAuthStateChange(async () => {
@@ -177,6 +212,227 @@ async function initTeacherAuth() {
   });
 
   await refreshAuthState();
+}
+
+function initLoginPage() {
+  const loginForm = document.getElementById('loginForm');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginMessage = document.getElementById('loginMessage');
+  if (!loginForm || !loginEmail || !loginPassword || !loginMessage) {
+    return;
+  }
+
+  const renderMessage = (message, isError = false) => {
+    loginMessage.textContent = message;
+    loginMessage.classList.toggle('error', isError);
+  };
+
+  onTeacherAuthChange((authState) => {
+    if (!authState.configured) {
+      renderMessage('Sign-in is not configured yet. Add Supabase values in app-config.js.', true);
+      return;
+    }
+
+    if (authState.loading) {
+      renderMessage('Checking session...');
+      return;
+    }
+
+    if (authState.session && authState.mustChangePassword) {
+      renderMessage('You must set a new password before continuing. Redirecting...');
+      globalThis.location.href = '/change-password';
+      return;
+    }
+
+    if (authState.session) {
+      renderMessage('Signed in. Redirecting...');
+      globalThis.location.href = '/jobs';
+    }
+  });
+
+  loginForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      renderMessage('Sign-in is not configured.', true);
+      return;
+    }
+
+    const email = loginEmail.value.trim();
+    const password = loginPassword.value;
+    if (!email || !password) {
+      renderMessage('Email and password are required.', true);
+      return;
+    }
+
+    renderMessage('Signing in...');
+    const { error } = await teacherAuthState.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      renderMessage('Sign-in failed. Check your credentials.', true);
+      return;
+    }
+
+    renderMessage('Signed in successfully. Redirecting...');
+  });
+}
+
+function initChangePasswordPage() {
+  const form = document.getElementById('changePasswordForm');
+  const newPasswordInput = document.getElementById('newPassword');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const message = document.getElementById('changePasswordMessage');
+  if (!form || !newPasswordInput || !confirmPasswordInput || !message) {
+    return;
+  }
+
+  const renderMessage = (text, isError = false) => {
+    message.textContent = text;
+    message.classList.toggle('error', isError);
+  };
+
+  onTeacherAuthChange((authState) => {
+    if (!authState.configured) {
+      renderMessage('Password update is not configured yet.', true);
+      return;
+    }
+
+    if (authState.loading) {
+      renderMessage('Checking session...');
+      return;
+    }
+
+    if (!authState.session) {
+      renderMessage('Please sign in first. Redirecting...');
+      globalThis.location.href = '/login';
+    }
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      renderMessage('Password update is not configured.', true);
+      return;
+    }
+
+    const newPassword = newPasswordInput.value;
+    const confirmPassword = confirmPasswordInput.value;
+
+    if (newPassword.length < 8) {
+      renderMessage('New password must be at least 8 characters.', true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      renderMessage('Passwords do not match.', true);
+      return;
+    }
+
+    renderMessage('Updating password...');
+    const { error } = await teacherAuthState.supabase.auth.updateUser({
+      password: newPassword,
+      data: {
+        must_change_password: false,
+      },
+    });
+
+    if (error) {
+      renderMessage('Unable to update password.', true);
+      return;
+    }
+
+    renderMessage('Password updated. Redirecting...');
+    globalThis.location.href = '/jobs';
+  });
+}
+
+function initAdminUsersPage() {
+  const form = document.getElementById('createUserForm');
+  const emailInput = document.getElementById('newUserEmail');
+  const passwordInput = document.getElementById('temporaryPassword');
+  const message = document.getElementById('adminUserMessage');
+  if (!form || !emailInput || !passwordInput || !message) {
+    return;
+  }
+
+  const renderMessage = (text, isError = false) => {
+    message.textContent = text;
+    message.classList.toggle('error', isError);
+  };
+
+  onTeacherAuthChange((authState) => {
+    if (!authState.configured) {
+      renderMessage('User management is not configured yet.', true);
+      return;
+    }
+
+    if (authState.loading) {
+      renderMessage('Checking permissions...');
+      return;
+    }
+
+    if (!authState.session) {
+      renderMessage('Please sign in first. Redirecting...');
+      globalThis.location.href = '/login';
+      return;
+    }
+
+    if (!authState.isAdmin) {
+      renderMessage('Only the admin account can add users.', true);
+    }
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      renderMessage('User management is not configured.', true);
+      return;
+    }
+
+    if (!teacherAuthState.isAdmin || !teacherAuthState.session) {
+      renderMessage('Only the admin account can add users.', true);
+      return;
+    }
+
+    const email = emailInput.value.trim().toLowerCase();
+    const temporaryPassword = passwordInput.value;
+
+    if (!email || !temporaryPassword) {
+      renderMessage('Email and temporary password are required.', true);
+      return;
+    }
+
+    if (temporaryPassword.length < 4) {
+      renderMessage('Temporary password must be at least 4 characters.', true);
+      return;
+    }
+
+    renderMessage('Creating user...');
+
+    const response = await fetch(`${globalThis.APP_CONFIG.supabaseUrl}/functions/v1/create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${teacherAuthState.session.access_token}`,
+      },
+      body: JSON.stringify({
+        email,
+        temporaryPassword,
+      }),
+    });
+
+    if (!response.ok) {
+      renderMessage('Unable to create user. Confirm edge function deployment and admin permissions.', true);
+      return;
+    }
+
+    renderMessage('User created. They must change password at first sign-in.');
+    form.reset();
+  });
 }
 
 function initThemeToggle() {
@@ -1285,6 +1541,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initSettingsMenu();
   initThemeToggle();
   initTeacherAuth();
+  initLoginPage();
+  initChangePasswordPage();
+  initAdminUsersPage();
   setCurrentYear();
   initActiveNav();
   initQuickGuideTooltip();

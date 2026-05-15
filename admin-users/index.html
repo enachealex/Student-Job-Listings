@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Admin-only user management for PTA Student Job Hub." />
+    <title>PTA Student Job Hub | Manage Users</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=20260514c" />
+  </head>
+  <body data-page="admin-users">
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="/" aria-label="PTA Student Job Hub home">
+          <span class="brand-mark">PT</span>
+          <span>PTA Student Job Hub</span>
+        </a>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a class="nav-link" href="/jobs">Jobs</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="container auth-shell">
+        <section class="auth-card" aria-labelledby="manageUsersTitle">
+          <h1 id="manageUsersTitle">Manage Users</h1>
+          <p class="auth-subtext">Admin only. Create users with temporary passwords that must be changed on first sign-in.</p>
+          <form id="createUserForm" class="auth-form">
+            <label for="newUserEmail">User Email</label>
+            <input id="newUserEmail" type="email" autocomplete="email" required />
+
+            <label for="temporaryPassword">Temporary Password</label>
+            <input id="temporaryPassword" type="text" value="1234" required />
+
+            <button class="btn btn-primary" type="submit">Create User</button>
+          </form>
+          <p class="auth-message" id="adminUserMessage" aria-live="polite"></p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <small>PTA Student Job Hub | <span data-year></span></small>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/app-config.js?v=20260514c"></script>
+    <script src="/script.js?v=20260514c"></script>
+  </body>
+</html>

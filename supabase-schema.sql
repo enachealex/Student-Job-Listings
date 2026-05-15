@@ -1,4 +1,7 @@
 -- Run this SQL in Supabase SQL Editor.
+-- In Supabase Auth settings, disable public sign-ups.
+-- Create admin auth user: enachealex1@gmail.com with temporary password 1234.
+-- Set admin user metadata: {"must_change_password": true}.
 
 create extension if not exists pgcrypto;
 
@@ -37,7 +40,6 @@ create trigger jobs_touch_updated_at
 before update on public.jobs
 for each row execute procedure public.touch_updated_at();
 
-alter table public.teacher_accounts enable row level security;
 alter table public.jobs enable row level security;
 
 create policy if not exists jobs_read_all

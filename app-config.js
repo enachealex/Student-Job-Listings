@@ -3,4 +3,6 @@ globalThis.APP_CONFIG = {
   supabaseUrl: '',
   // Supabase public anon key (safe for browser use)
   supabaseAnonKey: '',
+  // Admin account allowed to create additional users
+  adminEmail: 'enachealex1@gmail.com',
 };

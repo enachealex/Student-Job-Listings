@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Change password for PTA Student Job Hub." />
+    <title>PTA Student Job Hub | Change Password</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=20260514c" />
+  </head>
+  <body data-page="change-password">
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="/" aria-label="PTA Student Job Hub home">
+          <span class="brand-mark">PT</span>
+          <span>PTA Student Job Hub</span>
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <div class="container auth-shell">
+        <section class="auth-card" aria-labelledby="changePasswordTitle">
+          <h1 id="changePasswordTitle">Set a New Password</h1>
+          <p class="auth-subtext">For security, you must update your password before managing jobs.</p>
+          <form id="changePasswordForm" class="auth-form">
+            <label for="newPassword">New Password</label>
+            <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
+
+            <label for="confirmPassword">Confirm Password</label>
+            <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required />
+
+            <button class="btn btn-primary" type="submit">Update Password</button>
+          </form>
+          <p class="auth-message" id="changePasswordMessage" aria-live="polite"></p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <small>PTA Student Job Hub | <span data-year></span></small>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/app-config.js?v=20260514c"></script>
+    <script src="/script.js?v=20260514c"></script>
+  </body>
+</html>

@@ -221,6 +221,24 @@ img {
   background: rgba(152, 0, 46, 0.12);
 }
 
+.settings-link {
+  display: block;
+  width: 100%;
+  padding: 0.58rem 0.72rem;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid transparent;
+}
+
+.settings-link:hover {
+  background: rgba(152, 0, 46, 0.12);
+}
+
+.hidden {
+  display: none !important;
+}
+
 .theme-toggle:disabled {
   opacity: 0.72;
   cursor: not-allowed;
@@ -290,6 +308,46 @@ img {
   margin: 0.65rem 0 0;
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.88);
+}
+
+.auth-shell {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+.auth-card {
+  width: min(560px, 100%);
+  background: var(--surface);
+  border: 1px solid #e0d4d8;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  padding: 1.25rem;
+}
+
+.auth-subtext {
+  margin: 0.35rem 0 1rem;
+  color: var(--muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.auth-message {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  min-height: 1.35rem;
+}
+
+.auth-message.error {
+  color: var(--danger);
+}
+
+.auth-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 
 
@@ -1000,7 +1058,9 @@ body[data-theme="dark"] .nav-link,
 body[data-theme="dark"] .settings-trigger,
 body[data-theme="dark"] .settings-panel,
 body[data-theme="dark"] .theme-toggle,
-body[data-theme="dark"] .settings-auth-btn {
+body[data-theme="dark"] .settings-auth-btn,
+body[data-theme="dark"] .settings-link,
+body[data-theme="dark"] .auth-card {
   border-color: #374151;
 }
 
