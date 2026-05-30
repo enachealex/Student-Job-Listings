@@ -152,26 +152,17 @@ async function initTeacherAuth() {
     notifyTeacherAuthChange();
   };
 
-  const refreshAuthState = async () => {
-    teacherAuthState.loading = true;
-    if (hasSettingsUi) updateSettingsAuthUi('Checking session...');
-
-    const { data, error } = await teacherAuthState.supabase.auth.getSession();
-    if (error) {
-      teacherAuthState.loading = false;
-      teacherAuthState.session = null;
-      teacherAuthState.isAuthenticated = false;
-      teacherAuthState.isAdmin = false;
-      teacherAuthState.mustChangePassword = false;
-      updateSettingsAuthUi('Unable to verify session');
-      return;
-    }
-
-    teacherAuthState.session = data.session || null;
-    teacherAuthState.isAuthenticated = Boolean(teacherAuthState.session);
-    const userEmail = (teacherAuthState.session?.user?.email || '').toLowerCase();
-    teacherAuthState.isAdmin = Boolean(teacherAuthState.session && userEmail === getAdminEmail());
-    teacherAuthState.mustChangePassword = Boolean(teacherAuthState.session?.user?.user_metadata?.must_change_password);
+  // Apply a session snapshot to global auth state and handle page redirects.
+  // Called both from onAuthStateChange (with the session the SDK provides directly)
+  // and on initial load (with the result of getSession). Never calls getSession()
+  // inside onAuthStateChange — doing so deadlocks the Supabase JS client because
+  // it holds an internal lock during auth state change events.
+  const applySession = (session) => {
+    teacherAuthState.session = session || null;
+    teacherAuthState.isAuthenticated = Boolean(session);
+    const userEmail = (session?.user?.email || '').toLowerCase();
+    teacherAuthState.isAdmin = Boolean(session && userEmail === getAdminEmail());
+    teacherAuthState.mustChangePassword = Boolean(session?.user?.user_metadata?.must_change_password);
     teacherAuthState.loading = false;
     updateSettingsAuthUi();
 
@@ -218,11 +209,22 @@ async function initTeacherAuth() {
   }
 
   if (teacherAuthState.configured) {
-    teacherAuthState.supabase.auth.onAuthStateChange(async () => {
-      await refreshAuthState();
+    // Use the session passed directly by the SDK — never call getSession() here.
+    teacherAuthState.supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
     });
 
-    await refreshAuthState();
+    // Initial load: safe to call getSession() here since we are outside the lock.
+    teacherAuthState.loading = true;
+    if (hasSettingsUi) updateSettingsAuthUi('Checking session...');
+    teacherAuthState.supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        teacherAuthState.loading = false;
+        updateSettingsAuthUi('Unable to verify session');
+        return;
+      }
+      applySession(data.session || null);
+    });
   }
 }
 
