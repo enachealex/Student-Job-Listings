@@ -701,9 +701,9 @@ function initThemeToggle() {
 
   const applyTheme = (theme) => {
     if (theme === 'dark') {
-      document.body.dataset.theme = 'dark';
+      document.documentElement.setAttribute('data-theme', 'dark');
     } else {
-      delete document.body.dataset.theme;
+      document.documentElement.removeAttribute('data-theme');
     }
 
     if (themeToggle) {
@@ -721,7 +721,7 @@ function initThemeToggle() {
   }
 
   themeToggle.addEventListener('click', () => {
-    const isDark = document.body.dataset.theme === 'dark';
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const nextTheme = isDark ? 'light' : 'dark';
     localStorage.setItem(storageKey, nextTheme);
     applyTheme(nextTheme);

@@ -23,7 +23,7 @@
   --header-bg: rgba(250, 248, 248, 0.92);
 }
 
-body[data-theme="dark"] {
+:root[data-theme="dark"] {
   --bg-top: #0c0f13;
   --bg: #12161c;
   --surface: #1a212a;
@@ -77,11 +77,11 @@ body::after {
   opacity: 0;
 }
 
-body[data-theme="dark"]::before {
+:root[data-theme="dark"]::before {
   opacity: 0;
 }
 
-body[data-theme="dark"]::after {
+:root[data-theme="dark"]::after {
   opacity: 1;
 }
 
@@ -491,8 +491,8 @@ img {
   }
 }
 
-body[data-theme="dark"] .admin-panel,
-body[data-theme="dark"] .user-list-item {
+:root[data-theme="dark"] .admin-panel,
+:root[data-theme="dark"] .user-list-item {
   border-color: #374151;
 }
 
@@ -1265,50 +1265,50 @@ select:disabled {
   cursor: not-allowed;
 }
 
-body[data-theme="dark"] .nav-link,
-body[data-theme="dark"] .settings-trigger,
-body[data-theme="dark"] .settings-panel,
-body[data-theme="dark"] .theme-toggle,
-body[data-theme="dark"] .settings-auth-btn,
-body[data-theme="dark"] .settings-link,
-body[data-theme="dark"] .auth-card {
+:root[data-theme="dark"] .nav-link,
+:root[data-theme="dark"] .settings-trigger,
+:root[data-theme="dark"] .settings-panel,
+:root[data-theme="dark"] .theme-toggle,
+:root[data-theme="dark"] .settings-auth-btn,
+:root[data-theme="dark"] .settings-link,
+:root[data-theme="dark"] .auth-card {
   border-color: #374151;
 }
 
-body[data-theme="dark"] .card,
-body[data-theme="dark"] .step,
-body[data-theme="dark"] .listings,
-body[data-theme="dark"] .stat,
-body[data-theme="dark"] .modal-card,
-body[data-theme="dark"] .job-item,
-body[data-theme="dark"] .job-details-info,
-body[data-theme="dark"] .benefit-item,
-body[data-theme="dark"] .details-benefit-item {
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .step,
+:root[data-theme="dark"] .listings,
+:root[data-theme="dark"] .stat,
+:root[data-theme="dark"] .modal-card,
+:root[data-theme="dark"] .job-item,
+:root[data-theme="dark"] .job-details-info,
+:root[data-theme="dark"] .benefit-item,
+:root[data-theme="dark"] .details-benefit-item {
   border-color: #374151;
 }
 
-body[data-theme="dark"] .tab-btn {
+:root[data-theme="dark"] .tab-btn {
   background: var(--surface-2);
   border-color: #4b5563;
 }
 
-body[data-theme="dark"] .tab-btn[aria-selected="true"] {
+:root[data-theme="dark"] .tab-btn[aria-selected="true"] {
   background: rgba(152, 0, 46, 0.24);
   border-color: #cd8c9d;
   color: #f6dce4;
 }
 
-body[data-theme="dark"] .close-btn {
+:root[data-theme="dark"] .close-btn {
   background: var(--surface-2);
   border-color: #4b5563;
   color: var(--text);
 }
 
-body[data-theme="dark"] .guide-tooltip {
+:root[data-theme="dark"] .guide-tooltip {
   border-color: #4b5563;
 }
 
-body[data-theme="dark"] .footer {
+:root[data-theme="dark"] .footer {
   border-top-color: #374151;
 }
 
