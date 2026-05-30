@@ -890,7 +890,7 @@ function initProfileModal() {
   if (overlay) overlay.addEventListener('click', closeModal);
   if (editNameBtn) editNameBtn.addEventListener('click', () => { showEditForm(true); showPwPanel(false); renderMsg(editMsg, ''); });
   if (editCancelBtn) editCancelBtn.addEventListener('click', () => showEditForm(false));
-  if (tabPw) tabPw.addEventListener('click', () => { showPwPanel(!panelPw?.hidden); showEditForm(false); });
+  if (tabPw) tabPw.addEventListener('click', () => { showPwPanel(panelPw?.hidden); showEditForm(false); });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
