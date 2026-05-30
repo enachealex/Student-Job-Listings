@@ -813,7 +813,8 @@ function initProfileModal() {
   const emailEl = document.getElementById('profileModalEmail');
   const joinedEl = document.getElementById('profileModalJoined');
 
-  const tabInfo = document.getElementById('profileTabInfo');
+  const editNameBtn = document.getElementById('profileEditNameBtn');
+  const editCancelBtn = document.getElementById('profileEditCancel');
   const tabPw = document.getElementById('profileTabPassword');
   const panelInfo = document.getElementById('profilePanelInfo');
   const panelPw = document.getElementById('profilePanelPassword');
@@ -857,16 +858,19 @@ function initProfileModal() {
     if (lastInput) lastInput.value = meta.last_name || '';
   };
 
-  const switchTab = (showInfo) => {
-    if (tabInfo) tabInfo.setAttribute('aria-pressed', showInfo ? 'true' : 'false');
-    if (tabPw) tabPw.setAttribute('aria-pressed', showInfo ? 'false' : 'true');
-    if (panelInfo) panelInfo.hidden = !showInfo;
-    if (panelPw) panelPw.hidden = showInfo;
+  const showEditForm = (visible) => {
+    if (panelInfo) panelInfo.hidden = !visible;
+  };
+
+  const showPwPanel = (visible) => {
+    if (tabPw) tabPw.setAttribute('aria-pressed', visible ? 'true' : 'false');
+    if (panelPw) panelPw.hidden = !visible;
   };
 
   const openModal = () => {
     populateInfo(teacherAuthState.session);
-    switchTab(true);
+    showEditForm(false);
+    showPwPanel(false);
     renderMsg(editMsg, '');
     renderMsg(pwMsg, '');
     modal.classList.add('open');
@@ -884,8 +888,9 @@ function initProfileModal() {
   if (profileBtn) profileBtn.addEventListener('click', openModal);
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (overlay) overlay.addEventListener('click', closeModal);
-  if (tabInfo) tabInfo.addEventListener('click', () => switchTab(true));
-  if (tabPw) tabPw.addEventListener('click', () => switchTab(false));
+  if (editNameBtn) editNameBtn.addEventListener('click', () => { showEditForm(true); showPwPanel(false); renderMsg(editMsg, ''); });
+  if (editCancelBtn) editCancelBtn.addEventListener('click', () => showEditForm(false));
+  if (tabPw) tabPw.addEventListener('click', () => { showPwPanel(!panelPw?.hidden); showEditForm(false); });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
@@ -913,6 +918,7 @@ function initProfileModal() {
       const { data } = await teacherAuthState.supabase.auth.getSession();
       if (data?.session) populateInfo(data.session);
       renderMsg(editMsg, 'Profile saved.');
+      setTimeout(() => { showEditForm(false); renderMsg(editMsg, ''); }, 1000);
     });
   }
 

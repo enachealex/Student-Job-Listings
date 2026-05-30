@@ -160,15 +160,15 @@
         </div>
         <div class="modal-body">
           <dl class="profile-info">
-            <div class="profile-row"><dt>Name</dt><dd id="profileModalName">&#x2014;</dd></div>
+            <div class="profile-row profile-row-name">
+              <dt>Name</dt>
+              <dd id="profileModalName">&#x2014;</dd>
+              <button class="btn btn-muted btn-sm" type="button" id="profileEditNameBtn">Edit</button>
+            </div>
             <div class="profile-row"><dt>Email</dt><dd id="profileModalEmail">&#x2014;</dd></div>
             <div class="profile-row"><dt>Member since</dt><dd id="profileModalJoined">&#x2014;</dd></div>
           </dl>
-          <div class="profile-modal-tabs">
-            <button class="tab-btn" id="profileTabInfo" type="button" aria-pressed="true">Edit Info</button>
-            <button class="tab-btn" id="profileTabPassword" type="button" aria-pressed="false">Change Password</button>
-          </div>
-          <div id="profilePanelInfo">
+          <div id="profilePanelInfo" hidden>
             <form id="profileEditForm" class="auth-form profile-modal-form">
               <div class="form-row-2">
                 <div class="field">
@@ -180,9 +180,15 @@
                   <input id="profileModalLast" type="text" autocomplete="family-name" />
                 </div>
               </div>
-              <button class="btn btn-primary" type="submit" id="profileEditSave">Save Profile</button>
+              <div class="profile-edit-actions">
+                <button class="btn btn-muted btn-sm" type="button" id="profileEditCancel">Cancel</button>
+                <button class="btn btn-primary btn-sm" type="submit" id="profileEditSave">Save</button>
+              </div>
             </form>
             <p class="auth-message" id="profileEditMessage" aria-live="polite"></p>
+          </div>
+          <div class="profile-modal-tabs">
+            <button class="tab-btn" id="profileTabPassword" type="button" aria-pressed="false">Change Password</button>
           </div>
           <div id="profilePanelPassword" hidden>
             <form id="profilePwForm" class="auth-form profile-modal-form">

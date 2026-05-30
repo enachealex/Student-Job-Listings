@@ -491,6 +491,18 @@ img {
 }
 
 /* Profile modal */
+.profile-row-name {
+  grid-template-columns: 7rem 1fr auto;
+  align-items: center;
+}
+
+.profile-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
 .profile-modal-tabs {
   display: flex;
   gap: 0.5rem;
