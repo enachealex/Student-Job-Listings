@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-  const adminEmail = (Deno.env.get('ADMIN_EMAIL') || 'enachealex1@gmail.com').toLowerCase();
+  const adminEmail = (Deno.env.get('ADMIN_EMAIL') || 'lazyboy64@yahoo.com').toLowerCase();
 
   if (!supabaseUrl || !serviceRoleKey) {
     return new Response('Function is not configured', { status: 500, headers: corsHeaders });
@@ -55,8 +55,8 @@ Deno.serve(async (req) => {
     return new Response('Email and temporaryPassword are required', { status: 400, headers: corsHeaders });
   }
 
-  if (temporaryPassword.length < 4) {
-    return new Response('Temporary password must be at least 4 characters', { status: 400, headers: corsHeaders });
+  if (temporaryPassword.length < 8) {
+    return new Response('Temporary password must be at least 8 characters', { status: 400, headers: corsHeaders });
   }
 
   const created = await adminClient.auth.admin.createUser({

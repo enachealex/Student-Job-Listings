@@ -29,7 +29,7 @@ const teacherAuthState = {
 
 function getAdminEmail() {
   const configuredAdmin = (globalThis.APP_CONFIG?.adminEmail || '').trim().toLowerCase();
-  return configuredAdmin || 'enachealex1@gmail.com';
+  return configuredAdmin || 'lazyboy64@yahoo.com';
 }
 
 function getPathname() {
@@ -422,8 +422,8 @@ function initAdminUsersPage() {
       return;
     }
 
-    if (temporaryPassword.length < 4) {
-      renderMessage('Temporary password must be at least 4 characters.', true);
+    if (temporaryPassword.length < 8) {
+      renderMessage('Temporary password must be at least 8 characters.', true);
       return;
     }
 

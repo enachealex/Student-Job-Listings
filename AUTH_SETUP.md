@@ -17,7 +17,7 @@ Edit `app-config.js`:
 globalThis.APP_CONFIG = {
   supabaseUrl: 'https://YOUR_PROJECT_ID.supabase.co',
   supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY',
-  adminEmail: 'enachealex1@gmail.com',
+  adminEmail: 'lazyboy64@yahoo.com',
 };
 ```
 
@@ -51,8 +51,8 @@ This is required so users cannot self-register.
 
 In Supabase Dashboard -> Authentication -> Users:
 
-- Create user: `enachealex1@gmail.com`
-- Temporary password: `1234`
+- Create user: `lazyboy64@yahoo.com`
+- Set a strong temporary password (8+ characters). Do not commit it to the repo or share it publicly.
 - Mark email as confirmed.
 
 Then set user metadata to:
@@ -76,7 +76,7 @@ supabase functions deploy create-user
 Set function secrets:
 
 ```bash
-supabase secrets set ADMIN_EMAIL=enachealex1@gmail.com
+supabase secrets set ADMIN_EMAIL=lazyboy64@yahoo.com
 supabase secrets set SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 ```
