@@ -4,5 +4,5 @@ globalThis.APP_CONFIG = {
   adminEmail: 'lazyboy64@yahoo.com',
   // hCaptcha sitekey — replace with your real key from https://dashboard.hcaptcha.com
   // The value below is hCaptcha's public test key (always passes, safe for development)
-  hcaptchaSitekey: '10000000-ffff-ffff-ffff-000000000001',
+  hcaptchaSitekey: '7f02f2f0-347c-46aa-a026-61ae184ef028',
 };
