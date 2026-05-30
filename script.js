@@ -166,7 +166,7 @@ async function initTeacherAuth() {
   // and on initial load (with the result of getSession). Never calls getSession()
   // inside onAuthStateChange — doing so deadlocks the Supabase JS client because
   // it holds an internal lock during auth state change events.
-  const applySession = (session) => {
+  const applySession = (session, allowRedirect = false) => {
     teacherAuthState.session = session || null;
     teacherAuthState.isAuthenticated = Boolean(session);
     const userEmail = (session?.user?.email || '').toLowerCase();
@@ -175,6 +175,8 @@ async function initTeacherAuth() {
     teacherAuthState.loading = false;
     updateSettingsAuthUi();
 
+    if (!allowRedirect) return;
+
     if (teacherAuthState.mustChangePassword && !isChangePasswordPage() && !isLoginPage()) {
       globalThis.location.href = '/change-password';
       return;
@@ -182,11 +184,13 @@ async function initTeacherAuth() {
 
     if (teacherAuthState.isAuthenticated && isLoginPage() && !teacherAuthState.mustChangePassword) {
       globalThis.location.href = '/jobs';
+      return;
     }
 
     if (isAdminUsersPage() && (!teacherAuthState.isAuthenticated ||
         (!teacherAuthState.isAdmin && !session?.user?.user_metadata?.can_manage_users))) {
       globalThis.location.href = '/';
+      return;
     }
 
     if (isProfilePage() && !teacherAuthState.isAuthenticated) {
@@ -223,21 +227,27 @@ async function initTeacherAuth() {
   }
 
   if (teacherAuthState.configured) {
+    let initialLoadDone = false;
+
     // Use the session passed directly by the SDK — never call getSession() here.
     teacherAuthState.supabase.auth.onAuthStateChange((_event, session) => {
-      applySession(session);
+      // Skip protected-page redirects until getSession() has resolved,
+      // because onAuthStateChange can fire with session=null before the
+      // stored session is restored, causing premature redirects.
+      applySession(session, initialLoadDone);
     });
 
     // Initial load: safe to call getSession() here since we are outside the lock.
     teacherAuthState.loading = true;
     if (hasSettingsUi) updateSettingsAuthUi('Checking session...');
     teacherAuthState.supabase.auth.getSession().then(({ data, error }) => {
+      initialLoadDone = true;
       if (error) {
         teacherAuthState.loading = false;
         updateSettingsAuthUi('Unable to verify session');
         return;
       }
-      applySession(data.session || null);
+      applySession(data.session || null, true);
     });
   }
 }
@@ -311,7 +321,8 @@ function initLoginPage() {
     // hCaptcha verification — token is set by the widget on completion
     const captchaToken = loginForm.querySelector('[name="h-captcha-response"]')?.value || '';
     const sitekey = (globalThis.APP_CONFIG?.hcaptchaSitekey || '').trim();
-    const usingRealCaptcha = sitekey && sitekey !== '10000000-ffff-ffff-ffff-000000000001';
+    const isLocalhost = globalThis.location.hostname === 'localhost' || globalThis.location.hostname === '127.0.0.1';
+    const usingRealCaptcha = !isLocalhost && sitekey && sitekey !== '10000000-ffff-ffff-ffff-000000000001';
     if (usingRealCaptcha && !captchaToken) {
       renderMessage('Please complete the CAPTCHA before signing in.', true);
       return;
