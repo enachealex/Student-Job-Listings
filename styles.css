@@ -226,9 +226,14 @@ img {
   width: 100%;
   padding: 0.58rem 0.72rem;
   border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
   font-weight: 600;
+  text-align: left;
   color: var(--text);
+  background: transparent;
   border: 1px solid transparent;
+  cursor: pointer;
 }
 
 .settings-link:hover {
