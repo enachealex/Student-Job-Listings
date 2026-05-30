@@ -190,7 +190,7 @@ img {
   border-radius: 8px;
   font-weight: 600;
   color: var(--text);
-  text-align: left;
+  text-align: center;
   background: transparent;
   border: 1px solid transparent;
 }
@@ -211,7 +211,7 @@ img {
   padding: 0.58rem 0.72rem;
   border-radius: 8px;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
@@ -229,7 +229,7 @@ img {
   font-size: 1rem;
   font-family: inherit;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
