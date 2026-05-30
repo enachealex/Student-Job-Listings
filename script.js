@@ -175,7 +175,8 @@ async function initTeacherAuth() {
       globalThis.location.href = '/jobs';
     }
 
-    if (isAdminUsersPage() && (!teacherAuthState.isAuthenticated || !teacherAuthState.isAdmin)) {
+    if (isAdminUsersPage() && (!teacherAuthState.isAuthenticated ||
+        (!teacherAuthState.isAdmin && !session?.user?.user_metadata?.can_manage_users))) {
       globalThis.location.href = '/';
     }
   };
@@ -499,55 +500,156 @@ function initChangePasswordPage() {
   });
 }
 
+function canAccessUserManagement(authState) {
+  if (!authState.configured || !authState.session) return false;
+  return authState.isAdmin || Boolean(authState.session.user?.user_metadata?.can_manage_users);
+}
+
 function initAdminUsersPage() {
   const form = document.getElementById('createUserForm');
   const emailInput = document.getElementById('newUserEmail');
   const passwordInput = document.getElementById('temporaryPassword');
-  const message = document.getElementById('adminUserMessage');
-  if (!form || !emailInput || !passwordInput || !message) {
-    return;
-  }
+  const pageMessage = document.getElementById('adminUserMessage');
+  const createMessage = document.getElementById('createUserMessage');
+  const userList = document.getElementById('userList');
+  const userListEmpty = document.getElementById('userListEmpty');
+  const refreshBtn = document.getElementById('refreshUsersBtn');
 
-  const renderMessage = (text, isError = false) => {
-    message.textContent = text;
-    message.classList.toggle('error', isError);
+  if (!form || !emailInput || !passwordInput) return;
+
+  const renderPageMessage = (text, isError = false) => {
+    if (!pageMessage) return;
+    pageMessage.textContent = text;
+    pageMessage.classList.toggle('error', isError);
   };
+
+  const renderCreateMessage = (text, isError = false) => {
+    if (!createMessage) return;
+    createMessage.textContent = text;
+    createMessage.classList.toggle('error', isError);
+  };
+
+  const escapeHtml = (str) => String(str)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+
+  const formatDate = (iso) => {
+    if (!iso) return 'Never';
+    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const loadUsers = async () => {
+    if (!teacherAuthState.session) return;
+    if (userListEmpty) userListEmpty.textContent = 'Loading users...';
+    if (userList) userList.innerHTML = '';
+    if (userListEmpty) userList?.append(userListEmpty);
+
+    const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+    const resp = await fetch(`${supabaseUrl}/functions/v1/list-users`, {
+      headers: { Authorization: `Bearer ${teacherAuthState.session.access_token}` },
+    });
+
+    if (!resp.ok) {
+      if (userListEmpty) userListEmpty.textContent = 'Could not load users.';
+      return;
+    }
+
+    const { users } = await resp.json();
+    if (userList) userList.innerHTML = '';
+
+    if (!users || users.length === 0) {
+      if (userListEmpty) {
+        userListEmpty.textContent = 'No users found.';
+        userList?.append(userListEmpty);
+      }
+      return;
+    }
+
+    users.forEach((user) => {
+      const li = document.createElement('li');
+      li.className = 'user-list-item';
+      li.dataset.userId = user.id;
+
+      const badges = [];
+      if (user.isAdmin) badges.push('<span class="user-item-badge">Admin</span>');
+      if (user.mustChangePassword) badges.push('<span class="user-item-badge badge-warn">Must change password</span>');
+      if (user.canManageUsers && !user.isAdmin) badges.push('<span class="user-item-badge">Can manage users</span>');
+
+      const canToggle = teacherAuthState.isAdmin && !user.isAdmin;
+      const toggleHtml = canToggle ? `
+        <label class="user-permission-toggle">
+          <input type="checkbox" data-user-id="${escapeHtml(user.id)}" ${user.canManageUsers ? 'checked' : ''} />
+          Can manage users
+        </label>` : '';
+
+      li.innerHTML = `
+        <p class="user-item-email">${escapeHtml(user.email || '—')}</p>
+        <div class="user-item-meta">
+          <span>Joined ${formatDate(user.createdAt)}</span>
+          <span>Last sign-in: ${formatDate(user.lastSignIn)}</span>
+        </div>
+        ${badges.length ? `<div class="user-item-meta">${badges.join('')}</div>` : ''}
+        ${toggleHtml ? `<div class="user-item-actions">${toggleHtml}</div>` : ''}
+      `;
+      userList?.append(li);
+    });
+
+    // Wire permission toggles
+    userList?.querySelectorAll('input[data-user-id]').forEach((checkbox) => {
+      checkbox.addEventListener('change', async () => {
+        const userId = checkbox.dataset.userId;
+        const canManage = checkbox.checked;
+        checkbox.disabled = true;
+
+        const supabaseUrl2 = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+        const resp2 = await fetch(`${supabaseUrl2}/functions/v1/update-user-permissions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${teacherAuthState.session.access_token}`,
+          },
+          body: JSON.stringify({ userId, canManageUsers: canManage }),
+        });
+
+        if (!resp2.ok) {
+          checkbox.checked = !canManage;
+          renderPageMessage('Failed to update permissions. Please try again.', true);
+        }
+        checkbox.disabled = false;
+      });
+    });
+  };
+
+  if (refreshBtn) refreshBtn.addEventListener('click', loadUsers);
 
   onTeacherAuthChange((authState) => {
     if (!authState.configured) {
-      renderMessage('User management is not configured yet.', true);
+      renderPageMessage('User management is not configured yet.', true);
       return;
     }
-
-    if (authState.loading) {
-      renderMessage('Checking permissions...');
-      return;
-    }
-
+    if (authState.loading) return;
     if (!authState.session) {
-      renderMessage('Please sign in first. Redirecting...');
       globalThis.location.href = '/login';
       return;
     }
-
-    if (!authState.isAdmin) {
-      renderMessage('Only the admin account can add users.', true);
+    if (!canAccessUserManagement(authState)) {
+      globalThis.location.href = '/';
       return;
     }
-
-    renderMessage('Create an approved user with a temporary password.');
+    renderPageMessage('');
+    loadUsers();
   });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
-      renderMessage('User management is not configured.', true);
+    if (!teacherAuthState.session) {
+      renderCreateMessage('Not signed in.', true);
       return;
     }
 
-    if (!teacherAuthState.isAdmin || !teacherAuthState.session) {
-      renderMessage('Only the admin account can add users.', true);
+    if (!canAccessUserManagement(teacherAuthState)) {
+      renderCreateMessage('You do not have permission to create users.', true);
       return;
     }
 
@@ -555,40 +657,39 @@ function initAdminUsersPage() {
     const temporaryPassword = passwordInput.value;
 
     if (!email || !temporaryPassword) {
-      renderMessage('Email and temporary password are required.', true);
+      renderCreateMessage('Email and temporary password are required.', true);
       return;
     }
-
     if (temporaryPassword.length < 8) {
-      renderMessage('Temporary password must be at least 8 characters.', true);
+      renderCreateMessage('Temporary password must be at least 8 characters.', true);
       return;
     }
 
-    renderMessage('Creating user...');
+    const createBtn = document.getElementById('createUserBtn');
+    if (createBtn) createBtn.disabled = true;
+    renderCreateMessage('Creating user...');
 
-    const response = await fetch(`${globalThis.APP_CONFIG.supabaseUrl}/functions/v1/create-user`, {
+    const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+    const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${teacherAuthState.session.access_token}`,
       },
-      body: JSON.stringify({
-        email,
-        temporaryPassword,
-      }),
+      body: JSON.stringify({ email, temporaryPassword }),
     });
+
+    if (createBtn) createBtn.disabled = false;
 
     if (!response.ok) {
       const errorText = (await response.text()).trim();
-      renderMessage(
-        errorText || 'Unable to create user. Confirm edge function deployment and admin permissions.',
-        true,
-      );
+      renderCreateMessage(errorText || 'Unable to create user. Check edge function deployment.', true);
       return;
     }
 
-    renderMessage('User created. They must change password at first sign-in.');
+    renderCreateMessage('User created. They must change password at first sign-in.');
     form.reset();
+    loadUsers();
   });
 }
 

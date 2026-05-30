@@ -27,21 +27,41 @@
     </header>
 
     <main>
-      <div class="container auth-shell">
-        <section class="auth-card" aria-labelledby="manageUsersTitle">
-          <h1 id="manageUsersTitle">Manage Users</h1>
-          <p class="auth-subtext">Admin only. Create users with temporary passwords that must be changed on first sign-in.</p>
-          <form id="createUserForm" class="auth-form">
-            <label for="newUserEmail">User Email</label>
-            <input id="newUserEmail" type="email" autocomplete="email" required />
+      <div class="container admin-shell">
+        <h1 class="admin-page-title">Manage Users</h1>
+        <p class="admin-page-subtitle">Create users and manage access permissions.</p>
+        <p class="auth-message error" id="adminUserMessage" aria-live="polite"></p>
 
-            <label for="temporaryPassword">Temporary Password</label>
-            <input id="temporaryPassword" type="text" placeholder="At least 8 characters" autocomplete="off" required />
+        <div class="admin-users-layout">
+          <!-- Left: user list -->
+          <section class="admin-panel" aria-labelledby="userListTitle">
+            <div class="admin-panel-head">
+              <h2 id="userListTitle">Users</h2>
+              <button class="btn btn-muted btn-sm" id="refreshUsersBtn" type="button">Refresh</button>
+            </div>
+            <ul class="user-list" id="userList" aria-label="User list">
+              <li class="user-list-empty" id="userListEmpty">Loading users...</li>
+            </ul>
+          </section>
 
-            <button class="btn btn-primary" type="submit">Create User</button>
-          </form>
-          <p class="auth-message" id="adminUserMessage" aria-live="polite"></p>
-        </section>
+          <!-- Right: create user form -->
+          <section class="admin-panel" aria-labelledby="createUserTitle">
+            <div class="admin-panel-head">
+              <h2 id="createUserTitle">Add User</h2>
+            </div>
+            <p class="admin-panel-hint">New users must change their password on first sign-in.</p>
+            <form id="createUserForm" class="auth-form">
+              <label for="newUserEmail">Email</label>
+              <input id="newUserEmail" type="email" autocomplete="off" required />
+
+              <label for="temporaryPassword">Temporary Password</label>
+              <input id="temporaryPassword" type="text" placeholder="At least 8 characters" autocomplete="off" required />
+
+              <button class="btn btn-primary" type="submit" id="createUserBtn">Create User</button>
+            </form>
+            <p class="auth-message" id="createUserMessage" aria-live="polite"></p>
+          </section>
+        </div>
       </div>
     </main>
 
