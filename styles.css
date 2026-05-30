@@ -77,11 +77,11 @@ body::after {
   opacity: 0;
 }
 
-:root[data-theme="dark"]::before {
+:root[data-theme="dark"] body::before {
   opacity: 0;
 }
 
-:root[data-theme="dark"]::after {
+:root[data-theme="dark"] body::after {
   opacity: 1;
 }
 
