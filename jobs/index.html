@@ -51,7 +51,7 @@
               </button>
               <p class="settings-user" id="settingsUserStatus">User: Not signed in</p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
-              <a class="settings-link hidden" id="profileButton" href="/profile">Profile</a>
+              <button class="settings-link hidden" id="profileButton" type="button">Profile</button>
               <a class="settings-link hidden" id="manageUsersButton" href="/admin-users">Manage Users</a>
             </div>
           </div>
@@ -321,6 +321,65 @@
         <small>PTA Student Job Hub | <span data-year></span></small>
       </div>
     </footer>
+
+    <!-- Profile modal -->
+    <div class="modal" id="profileModal" aria-modal="true" aria-labelledby="profileModalTitle" aria-hidden="true">
+      <div class="modal-overlay" id="profileModalOverlay"></div>
+      <div class="modal-card modal-card-sm">
+        <div class="modal-top">
+          <h3 id="profileModalTitle">Your Profile</h3>
+          <button class="close-btn" type="button" id="profileModalClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <dl class="profile-info">
+            <div class="profile-row"><dt>Name</dt><dd id="profileModalName">—</dd></div>
+            <div class="profile-row"><dt>Email</dt><dd id="profileModalEmail">—</dd></div>
+            <div class="profile-row"><dt>Member since</dt><dd id="profileModalJoined">—</dd></div>
+          </dl>
+          <div class="profile-modal-tabs">
+            <button class="tab-btn" id="profileTabInfo" type="button" aria-pressed="true">Edit Info</button>
+            <button class="tab-btn" id="profileTabPassword" type="button" aria-pressed="false">Change Password</button>
+          </div>
+          <div id="profilePanelInfo">
+            <form id="profileEditForm" class="auth-form profile-modal-form">
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="profileModalFirst">First Name</label>
+                  <input id="profileModalFirst" type="text" autocomplete="given-name" />
+                </div>
+                <div class="field">
+                  <label for="profileModalLast">Last Name</label>
+                  <input id="profileModalLast" type="text" autocomplete="family-name" />
+                </div>
+              </div>
+              <button class="btn btn-primary" type="submit" id="profileEditSave">Save Profile</button>
+            </form>
+            <p class="auth-message" id="profileEditMessage" aria-live="polite"></p>
+          </div>
+          <div id="profilePanelPassword" hidden>
+            <form id="profilePwForm" class="auth-form profile-modal-form">
+              <label for="profileNewPw">New Password</label>
+              <input id="profileNewPw" type="password" autocomplete="new-password" required />
+              <div class="pw-strength-bar" aria-hidden="true">
+                <div id="profilePwFill" class="pw-strength-fill"></div>
+              </div>
+              <ul class="pw-requirements" aria-live="polite">
+                <li id="profile-req-length" class="pw-req">At least 8 characters</li>
+                <li id="profile-req-upper" class="pw-req">One uppercase letter (A–Z)</li>
+                <li id="profile-req-lower" class="pw-req">One lowercase letter (a–z)</li>
+                <li id="profile-req-number" class="pw-req">One number (0–9)</li>
+                <li id="profile-req-special" class="pw-req">One special character (!@#$…)</li>
+              </ul>
+              <label for="profileConfirmPw">Confirm Password</label>
+              <input id="profileConfirmPw" type="password" autocomplete="new-password" required />
+              <p class="pw-match-msg" id="profilePwMatch" aria-live="polite"></p>
+              <button class="btn btn-primary" type="submit" id="profilePwSave" disabled>Update Password</button>
+            </form>
+            <p class="auth-message" id="profilePwMessage" aria-live="polite"></p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/app-config.js?v=20260532"></script>

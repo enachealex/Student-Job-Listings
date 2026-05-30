@@ -48,9 +48,6 @@ function isAdminUsersPage() {
   return getPathname() === '/admin-users';
 }
 
-function isProfilePage() {
-  return getPathname() === '/profile';
-}
 
 function closeOpenSettingsMenus() {
   const menus = document.querySelectorAll('.settings-menu');
@@ -183,8 +180,7 @@ async function initTeacherAuth() {
     }
 
     if (teacherAuthState.isAuthenticated && isLoginPage() && !teacherAuthState.mustChangePassword) {
-      const next = new URLSearchParams(globalThis.location.search).get('next');
-      globalThis.location.href = next || '/jobs';
+      globalThis.location.href = '/jobs';
       return;
     }
 
@@ -194,9 +190,6 @@ async function initTeacherAuth() {
       return;
     }
 
-    if (isProfilePage() && !teacherAuthState.isAuthenticated) {
-      globalThis.location.href = '/login?next=/profile';
-    }
   };
 
   if (hasSettingsUi) {
@@ -808,219 +801,178 @@ function initAdminUsersPage() {
   });
 }
 
-function initProfilePage() {
-  const profileName = document.getElementById('profileName');
-  const profileEmail = document.getElementById('profileEmail');
-  const profileJoined = document.getElementById('profileJoined');
-  const profileMessage = document.getElementById('profileMessage');
-  const editProfileBtn = document.getElementById('editProfileBtn');
+function initProfileModal() {
+  const modal = document.getElementById('profileModal');
+  if (!modal) return;
 
-  // Edit profile modal
-  const editModal = document.getElementById('editProfileModal');
-  const editModalClose = document.getElementById('editProfileModalClose');
-  const editModalOverlay = document.getElementById('editProfileModalOverlay');
-  const editProfileForm = document.getElementById('editProfileForm');
-  const editProfileCancel = document.getElementById('editProfileCancel');
-  const profileFirstName = document.getElementById('profileFirstName');
-  const profileLastName = document.getElementById('profileLastName');
-  const editProfileMessage = document.getElementById('editProfileMessage');
+  const overlay = document.getElementById('profileModalOverlay');
+  const closeBtn = document.getElementById('profileModalClose');
+  const profileBtn = document.getElementById('profileButton');
 
-  // Change password form (reuses same IDs as change-password page)
-  const pwForm = document.getElementById('changePasswordForm');
-  const newPasswordInput = document.getElementById('newPassword');
-  const confirmPasswordInput = document.getElementById('confirmPassword');
-  const pwMessage = document.getElementById('changePasswordMessage');
-  const strengthFill = document.getElementById('pwStrengthFill');
-  const matchMsg = document.getElementById('pwMatchMsg');
-  const submitBtn = document.getElementById('updatePasswordBtn');
+  const nameEl = document.getElementById('profileModalName');
+  const emailEl = document.getElementById('profileModalEmail');
+  const joinedEl = document.getElementById('profileModalJoined');
 
-  if (!profileName) return; // not on profile page
+  const tabInfo = document.getElementById('profileTabInfo');
+  const tabPw = document.getElementById('profileTabPassword');
+  const panelInfo = document.getElementById('profilePanelInfo');
+  const panelPw = document.getElementById('profilePanelPassword');
 
-  const renderProfileMessage = (text, isError = false) => {
-    if (!profileMessage) return;
-    profileMessage.textContent = text;
-    profileMessage.classList.toggle('error', isError);
+  const editForm = document.getElementById('profileEditForm');
+  const firstInput = document.getElementById('profileModalFirst');
+  const lastInput = document.getElementById('profileModalLast');
+  const editMsg = document.getElementById('profileEditMessage');
+
+  const pwForm = document.getElementById('profilePwForm');
+  const newPwInput = document.getElementById('profileNewPw');
+  const confirmPwInput = document.getElementById('profileConfirmPw');
+  const pwFill = document.getElementById('profilePwFill');
+  const pwMatch = document.getElementById('profilePwMatch');
+  const pwSaveBtn = document.getElementById('profilePwSave');
+  const pwMsg = document.getElementById('profilePwMessage');
+
+  const rules = [
+    { id: 'profile-req-length',  test: (p) => p.length >= 8 },
+    { id: 'profile-req-upper',   test: (p) => /[A-Z]/.test(p) },
+    { id: 'profile-req-lower',   test: (p) => /[a-z]/.test(p) },
+    { id: 'profile-req-number',  test: (p) => /[0-9]/.test(p) },
+    { id: 'profile-req-special', test: (p) => /[^A-Za-z0-9]/.test(p) },
+  ];
+  const allMet = (p) => rules.every((r) => r.test(p));
+
+  const renderMsg = (el, text, isError = false) => {
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('error', isError);
   };
 
-  const renderEditMessage = (text, isError = false) => {
-    if (!editProfileMessage) return;
-    editProfileMessage.textContent = text;
-    editProfileMessage.classList.toggle('error', isError);
-  };
-
-  const populateProfile = (session) => {
+  const populateInfo = (session) => {
     if (!session) return;
     const meta = session.user?.user_metadata || {};
-    const firstName = meta.first_name || '';
-    const lastName = meta.last_name || '';
-    const displayName = [firstName, lastName].filter(Boolean).join(' ') || '—';
-    if (profileName) profileName.textContent = displayName;
-    if (profileEmail) profileEmail.textContent = session.user?.email || '—';
-    if (profileJoined) profileJoined.textContent = formatDate(session.user?.created_at);
+    const displayName = [meta.first_name, meta.last_name].filter(Boolean).join(' ') || '—';
+    if (nameEl) nameEl.textContent = displayName;
+    if (emailEl) emailEl.textContent = session.user?.email || '—';
+    if (joinedEl) joinedEl.textContent = formatDate(session.user?.created_at);
+    if (firstInput) firstInput.value = meta.first_name || '';
+    if (lastInput) lastInput.value = meta.last_name || '';
   };
 
-  const openEditModal = () => {
-    if (!editModal) return;
-    const meta = teacherAuthState.session?.user?.user_metadata || {};
-    if (profileFirstName) profileFirstName.value = meta.first_name || '';
-    if (profileLastName) profileLastName.value = meta.last_name || '';
-    renderEditMessage('');
-    editModal.classList.add('open');
-    editModal.setAttribute('aria-hidden', 'false');
+  const switchTab = (showInfo) => {
+    if (tabInfo) tabInfo.setAttribute('aria-pressed', showInfo ? 'true' : 'false');
+    if (tabPw) tabPw.setAttribute('aria-pressed', showInfo ? 'false' : 'true');
+    if (panelInfo) panelInfo.hidden = !showInfo;
+    if (panelPw) panelPw.hidden = showInfo;
+  };
+
+  const openModal = () => {
+    populateInfo(teacherAuthState.session);
+    switchTab(true);
+    renderMsg(editMsg, '');
+    renderMsg(pwMsg, '');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
+    closeOpenSettingsMenus();
   };
 
-  const closeEditModal = () => {
-    if (!editModal) return;
-    editModal.classList.remove('open');
-    editModal.setAttribute('aria-hidden', 'true');
+  const closeModal = () => {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('modal-open');
   };
 
-  if (editProfileBtn) editProfileBtn.addEventListener('click', openEditModal);
-  if (editModalClose) editModalClose.addEventListener('click', closeEditModal);
-  if (editModalOverlay) editModalOverlay.addEventListener('click', closeEditModal);
-  if (editProfileCancel) editProfileCancel.addEventListener('click', closeEditModal);
+  if (profileBtn) profileBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (overlay) overlay.addEventListener('click', closeModal);
+  if (tabInfo) tabInfo.addEventListener('click', () => switchTab(true));
+  if (tabPw) tabPw.addEventListener('click', () => switchTab(false));
 
-  if (editProfileForm) {
-    editProfileForm.addEventListener('submit', async (e) => {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+
+  // Edit info form
+  if (editForm) {
+    editForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const saveBtn = document.getElementById('editProfileSave');
+      const saveBtn = document.getElementById('profileEditSave');
       if (saveBtn) saveBtn.disabled = true;
-      renderEditMessage('Saving...');
+      renderMsg(editMsg, 'Saving...');
 
       const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
       const anonKey = globalThis.APP_CONFIG?.supabaseAnonKey || '';
       const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': anonKey,
-          Authorization: `Bearer ${teacherAuthState.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          data: {
-            first_name: profileFirstName?.value?.trim() || '',
-            last_name: profileLastName?.value?.trim() || '',
-          },
-        }),
+        headers: { 'Content-Type': 'application/json', 'apikey': anonKey, Authorization: `Bearer ${teacherAuthState.session?.access_token}` },
+        body: JSON.stringify({ data: { first_name: firstInput?.value.trim() || '', last_name: lastInput?.value.trim() || '' } }),
       });
 
       if (saveBtn) saveBtn.disabled = false;
-      if (!resp.ok) {
-        renderEditMessage('Failed to save profile.', true);
-        return;
-      }
+      if (!resp.ok) { renderMsg(editMsg, 'Failed to save.', true); return; }
 
-      // Refresh session so profile display updates
       const { data } = await teacherAuthState.supabase.auth.getSession();
-      if (data?.session) populateProfile(data.session);
-      renderEditMessage('Saved.');
-      setTimeout(closeEditModal, 800);
+      if (data?.session) populateInfo(data.session);
+      renderMsg(editMsg, 'Profile saved.');
     });
   }
 
-  // Password change logic (voluntary, not forced)
-  if (pwForm && newPasswordInput && confirmPasswordInput) {
-    const rules = [
-      { id: 'req-length',  test: (p) => p.length >= 8 },
-      { id: 'req-upper',   test: (p) => /[A-Z]/.test(p) },
-      { id: 'req-lower',   test: (p) => /[a-z]/.test(p) },
-      { id: 'req-number',  test: (p) => /[0-9]/.test(p) },
-      { id: 'req-special', test: (p) => /[^A-Za-z0-9]/.test(p) },
-    ];
-    const getStrength = (p) => rules.filter((r) => r.test(p)).length;
-    const allMet = (p) => getStrength(p) === rules.length;
-
-    const updateStrengthUi = () => {
-      const p = newPasswordInput.value;
-      const s = getStrength(p);
-      if (strengthFill) strengthFill.dataset.strength = p.length === 0 ? '' : String(s);
-      rules.forEach((r) => {
-        const el = document.getElementById(r.id);
-        if (el) el.classList.toggle('met', r.test(p));
-      });
-      updateSubmitState();
+  // Password form
+  if (pwForm && newPwInput && confirmPwInput) {
+    const updateStrength = () => {
+      const p = newPwInput.value;
+      if (pwFill) pwFill.dataset.strength = p.length === 0 ? '' : String(rules.filter((r) => r.test(p)).length);
+      rules.forEach((r) => { const el = document.getElementById(r.id); if (el) el.classList.toggle('met', r.test(p)); });
+      updatePwBtn();
     };
 
-    const updateMatchUi = () => {
-      const p = newPasswordInput.value;
-      const c = confirmPasswordInput.value;
-      if (!matchMsg) return;
-      if (c.length === 0) {
-        matchMsg.textContent = '';
-        matchMsg.className = 'pw-match-msg';
-      } else if (p === c) {
-        matchMsg.textContent = 'Passwords match';
-        matchMsg.className = 'pw-match-msg match';
-      } else {
-        matchMsg.textContent = 'Passwords do not match';
-        matchMsg.className = 'pw-match-msg no-match';
-      }
-      updateSubmitState();
+    const updateMatch = () => {
+      const p = newPwInput.value; const c = confirmPwInput.value;
+      if (!pwMatch) return;
+      if (!c) { pwMatch.textContent = ''; pwMatch.className = 'pw-match-msg'; }
+      else if (p === c) { pwMatch.textContent = 'Passwords match'; pwMatch.className = 'pw-match-msg match'; }
+      else { pwMatch.textContent = 'Passwords do not match'; pwMatch.className = 'pw-match-msg no-match'; }
+      updatePwBtn();
     };
 
-    const updateSubmitState = () => {
-      if (!submitBtn) return;
-      const p = newPasswordInput.value;
-      const c = confirmPasswordInput.value;
-      submitBtn.disabled = !(allMet(p) && p === c);
+    const updatePwBtn = () => {
+      if (pwSaveBtn) pwSaveBtn.disabled = !(allMet(newPwInput.value) && newPwInput.value === confirmPwInput.value);
     };
 
-    newPasswordInput.addEventListener('input', () => {
-      updateStrengthUi();
-      if (confirmPasswordInput.value.length > 0) updateMatchUi();
-    });
-    confirmPasswordInput.addEventListener('input', updateMatchUi);
-
-    const renderPwMessage = (text, isError = false) => {
-      if (!pwMessage) return;
-      pwMessage.textContent = text;
-      pwMessage.classList.toggle('error', isError);
-    };
+    newPwInput.addEventListener('input', () => { updateStrength(); if (confirmPwInput.value) updateMatch(); });
+    confirmPwInput.addEventListener('input', updateMatch);
 
     pwForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const newPassword = newPasswordInput.value;
-      const confirmPassword = confirmPasswordInput.value;
-      if (!allMet(newPassword) || newPassword !== confirmPassword) return;
-
-      if (submitBtn) submitBtn.disabled = true;
-      renderPwMessage('Updating password...');
+      const p = newPwInput.value;
+      if (!allMet(p) || p !== confirmPwInput.value) return;
+      if (pwSaveBtn) pwSaveBtn.disabled = true;
+      renderMsg(pwMsg, 'Updating...');
 
       const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
       const anonKey = globalThis.APP_CONFIG?.supabaseAnonKey || '';
       const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': anonKey,
-          Authorization: `Bearer ${teacherAuthState.session?.access_token}`,
-        },
-        body: JSON.stringify({ password: newPassword }),
+        headers: { 'Content-Type': 'application/json', 'apikey': anonKey, Authorization: `Bearer ${teacherAuthState.session?.access_token}` },
+        body: JSON.stringify({ password: p }),
       });
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        renderPwMessage(err.message || 'Failed to update password.', true);
-        if (submitBtn) submitBtn.disabled = false;
+        renderMsg(pwMsg, err.message || 'Failed to update password.', true);
+        if (pwSaveBtn) pwSaveBtn.disabled = false;
         return;
       }
 
-      renderPwMessage('Password updated successfully.');
       pwForm.reset();
-      if (strengthFill) strengthFill.dataset.strength = '';
-      rules.forEach((r) => {
-        const el = document.getElementById(r.id);
-        if (el) el.classList.remove('met');
-      });
-      if (matchMsg) { matchMsg.textContent = ''; matchMsg.className = 'pw-match-msg'; }
+      if (pwFill) pwFill.dataset.strength = '';
+      rules.forEach((r) => { const el = document.getElementById(r.id); if (el) el.classList.remove('met'); });
+      if (pwMatch) { pwMatch.textContent = ''; pwMatch.className = 'pw-match-msg'; }
+      renderMsg(pwMsg, 'Password updated successfully.');
     });
   }
 
   onTeacherAuthChange((authState) => {
-    if (!authState.configured || authState.loading) return;
-    if (authState.session) populateProfile(authState.session);
+    if (authState.session) populateInfo(authState.session);
   });
 }
 
@@ -2133,7 +2085,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initLoginPage();
   initChangePasswordPage();
   initAdminUsersPage();
-  initProfilePage();
+  initProfileModal();
   setCurrentYear();
   initActiveNav();
   initQuickGuideTooltip();

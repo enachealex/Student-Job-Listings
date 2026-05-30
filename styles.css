@@ -485,6 +485,23 @@ img {
   cursor: pointer;
 }
 
+/* Profile modal */
+.profile-modal-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.profile-modal-tabs .tab-btn[aria-pressed="true"] {
+  background: #f8e8ed;
+  border-color: #cd8c9d;
+  color: #98002e;
+}
+
+.profile-modal-form {
+  margin-top: 0.5rem;
+}
+
 /* Profile page */
 .profile-layout {
   display: grid;
