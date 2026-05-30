@@ -183,7 +183,8 @@ async function initTeacherAuth() {
     }
 
     if (teacherAuthState.isAuthenticated && isLoginPage() && !teacherAuthState.mustChangePassword) {
-      globalThis.location.href = '/jobs';
+      const next = new URLSearchParams(globalThis.location.search).get('next');
+      globalThis.location.href = next || '/jobs';
       return;
     }
 
@@ -194,7 +195,7 @@ async function initTeacherAuth() {
     }
 
     if (isProfilePage() && !teacherAuthState.isAuthenticated) {
-      globalThis.location.href = '/login';
+      globalThis.location.href = '/login?next=/profile';
     }
   };
 
@@ -230,11 +231,11 @@ async function initTeacherAuth() {
     let initialLoadDone = false;
 
     // Use the session passed directly by the SDK — never call getSession() here.
-    teacherAuthState.supabase.auth.onAuthStateChange((_event, session) => {
-      // Skip protected-page redirects until getSession() has resolved,
-      // because onAuthStateChange can fire with session=null before the
-      // stored session is restored, causing premature redirects.
-      applySession(session, initialLoadDone);
+    teacherAuthState.supabase.auth.onAuthStateChange((event, session) => {
+      // Only allow redirects after getSession() has confirmed the real session,
+      // OR when a meaningful auth event fires (not the cold INITIAL_SESSION with null).
+      const isSignificantEvent = event !== 'INITIAL_SESSION';
+      applySession(session, initialLoadDone || (isSignificantEvent && Boolean(session)));
     });
 
     // Initial load: safe to call getSession() here since we are outside the lock.
