@@ -188,6 +188,10 @@ async function initTeacherAuth() {
         (!teacherAuthState.isAdmin && !session?.user?.user_metadata?.can_manage_users))) {
       globalThis.location.href = '/';
     }
+
+    if (isProfilePage() && !teacherAuthState.isAuthenticated) {
+      globalThis.location.href = '/login';
+    }
   };
 
   if (hasSettingsUi) {
@@ -1004,11 +1008,7 @@ function initProfilePage() {
 
   onTeacherAuthChange((authState) => {
     if (!authState.configured || authState.loading) return;
-    if (!authState.session) {
-      globalThis.location.href = '/login';
-      return;
-    }
-    populateProfile(authState.session);
+    if (authState.session) populateProfile(authState.session);
   });
 }
 
