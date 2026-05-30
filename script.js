@@ -48,6 +48,10 @@ function isAdminUsersPage() {
   return getPathname() === '/admin-users';
 }
 
+function isProfilePage() {
+  return getPathname() === '/profile';
+}
+
 function closeOpenSettingsMenus() {
   const menus = document.querySelectorAll('.settings-menu');
   menus.forEach((menu) => {
@@ -117,6 +121,7 @@ async function initTeacherAuth() {
   const authActionButton = document.getElementById('authActionButton');
   const settingsUserStatus = document.getElementById('settingsUserStatus');
   const manageUsersButton = document.getElementById('manageUsersButton');
+  const profileButton = document.getElementById('profileButton');
   const hasSettingsUi = Boolean(authActionButton && settingsUserStatus);
 
   const updateSettingsAuthUi = (statusMessage = '') => {
@@ -125,8 +130,12 @@ async function initTeacherAuth() {
       return;
     }
 
+    if (profileButton) {
+      profileButton.classList.toggle('hidden', !teacherAuthState.isAuthenticated);
+    }
     if (manageUsersButton) {
-      manageUsersButton.classList.toggle('hidden', !teacherAuthState.isAdmin);
+      manageUsersButton.classList.toggle('hidden',
+        !teacherAuthState.isAdmin && !teacherAuthState.session?.user?.user_metadata?.can_manage_users);
     }
 
     if (!teacherAuthState.configured) {
@@ -505,15 +514,54 @@ function canAccessUserManagement(authState) {
   return authState.isAdmin || Boolean(authState.session.user?.user_metadata?.can_manage_users);
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+}
+
+function formatDate(iso) {
+  if (!iso) return 'Never';
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function callAdminApi(path, body) {
+  const url = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+  return fetch(`${url}/functions/v1/${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${teacherAuthState.session?.access_token}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 function initAdminUsersPage() {
   const form = document.getElementById('createUserForm');
   const emailInput = document.getElementById('newUserEmail');
   const passwordInput = document.getElementById('temporaryPassword');
+  const firstNameInput = document.getElementById('newUserFirstName');
+  const lastNameInput = document.getElementById('newUserLastName');
   const pageMessage = document.getElementById('adminUserMessage');
   const createMessage = document.getElementById('createUserMessage');
   const userList = document.getElementById('userList');
   const userListEmpty = document.getElementById('userListEmpty');
   const refreshBtn = document.getElementById('refreshUsersBtn');
+
+  // Edit modal elements
+  const editModal = document.getElementById('editUserModal');
+  const editModalClose = document.getElementById('editUserModalClose');
+  const editModalOverlay = document.getElementById('editUserModalOverlay');
+  const editUserIdInput = document.getElementById('editUserId');
+  const editFirstName = document.getElementById('editFirstName');
+  const editLastName = document.getElementById('editLastName');
+  const editEmail = document.getElementById('editEmail');
+  const editCanManage = document.getElementById('editCanManage');
+  const editCanManageWrap = document.getElementById('editCanManageWrap');
+  const editUserForm = document.getElementById('editUserForm');
+  const editUserCancel = document.getElementById('editUserCancel');
+  const editUserMessage = document.getElementById('editUserMessage');
 
   if (!form || !emailInput || !passwordInput) return;
 
@@ -529,23 +577,77 @@ function initAdminUsersPage() {
     createMessage.classList.toggle('error', isError);
   };
 
-  const escapeHtml = (str) => String(str)
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-
-  const formatDate = (iso) => {
-    if (!iso) return 'Never';
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const renderEditMessage = (text, isError = false) => {
+    if (!editUserMessage) return;
+    editUserMessage.textContent = text;
+    editUserMessage.classList.toggle('error', isError);
   };
+
+  const openEditModal = (user) => {
+    if (!editModal) return;
+    if (editUserIdInput) editUserIdInput.value = user.id;
+    if (editFirstName) editFirstName.value = user.firstName || '';
+    if (editLastName) editLastName.value = user.lastName || '';
+    if (editEmail) editEmail.value = user.email || '';
+    if (editCanManage) editCanManage.checked = user.canManageUsers || false;
+    // Only admin can change permissions; hide toggle for non-admins and for admin user
+    if (editCanManageWrap) {
+      editCanManageWrap.classList.toggle('hidden', !teacherAuthState.isAdmin || user.isAdmin);
+    }
+    renderEditMessage('');
+    editModal.classList.add('open');
+    editModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+  };
+
+  const closeEditModal = () => {
+    if (!editModal) return;
+    editModal.classList.remove('open');
+    editModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+  };
+
+  if (editModalClose) editModalClose.addEventListener('click', closeEditModal);
+  if (editModalOverlay) editModalOverlay.addEventListener('click', closeEditModal);
+  if (editUserCancel) editUserCancel.addEventListener('click', closeEditModal);
+
+  if (editUserForm) {
+    editUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = editUserIdInput?.value;
+      if (!userId) return;
+      const saveBtn = document.getElementById('editUserSave');
+      if (saveBtn) saveBtn.disabled = true;
+      renderEditMessage('Saving...');
+
+      const resp = await callAdminApi('admin-update-user', {
+        userId,
+        firstName: editFirstName?.value?.trim() || '',
+        lastName: editLastName?.value?.trim() || '',
+        canManageUsers: editCanManage?.checked,
+      });
+
+      if (saveBtn) saveBtn.disabled = false;
+      if (!resp.ok) {
+        renderEditMessage((await resp.text()) || 'Failed to save changes.', true);
+        return;
+      }
+      renderEditMessage('Saved.');
+      setTimeout(closeEditModal, 800);
+      loadUsers();
+    });
+  }
 
   const loadUsers = async () => {
     if (!teacherAuthState.session) return;
-    if (userListEmpty) userListEmpty.textContent = 'Loading users...';
     if (userList) userList.innerHTML = '';
-    if (userListEmpty) userList?.append(userListEmpty);
+    if (userListEmpty) {
+      userListEmpty.textContent = 'Loading users...';
+      userList?.append(userListEmpty);
+    }
 
-    const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
-    const resp = await fetch(`${supabaseUrl}/functions/v1/list-users`, {
+    const url = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+    const resp = await fetch(`${url}/functions/v1/list-users`, {
       headers: { Authorization: `Bearer ${teacherAuthState.session.access_token}` },
     });
 
@@ -568,55 +670,56 @@ function initAdminUsersPage() {
     users.forEach((user) => {
       const li = document.createElement('li');
       li.className = 'user-list-item';
-      li.dataset.userId = user.id;
 
+      const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || '—';
       const badges = [];
       if (user.isAdmin) badges.push('<span class="user-item-badge">Admin</span>');
       if (user.mustChangePassword) badges.push('<span class="user-item-badge badge-warn">Must change password</span>');
       if (user.canManageUsers && !user.isAdmin) badges.push('<span class="user-item-badge">Can manage users</span>');
 
-      const canToggle = teacherAuthState.isAdmin && !user.isAdmin;
-      const toggleHtml = canToggle ? `
-        <label class="user-permission-toggle">
-          <input type="checkbox" data-user-id="${escapeHtml(user.id)}" ${user.canManageUsers ? 'checked' : ''} />
-          Can manage users
-        </label>` : '';
+      const isAdminSelf = user.isAdmin;
+      const editBtn = `<button class="btn btn-muted user-action-btn" data-action="edit" type="button">Edit</button>`;
+      const resetBtn = `<button class="btn btn-muted user-action-btn" data-action="reset" type="button">Reset Password</button>`;
+      const deleteBtn = teacherAuthState.isAdmin && !isAdminSelf
+        ? `<button class="btn user-action-btn btn-danger" data-action="delete" type="button">Delete</button>`
+        : '';
 
       li.innerHTML = `
         <p class="user-item-email">${escapeHtml(user.email || '—')}</p>
+        <div class="user-item-meta"><span>${escapeHtml(displayName)}</span></div>
         <div class="user-item-meta">
           <span>Joined ${formatDate(user.createdAt)}</span>
           <span>Last sign-in: ${formatDate(user.lastSignIn)}</span>
         </div>
         ${badges.length ? `<div class="user-item-meta">${badges.join('')}</div>` : ''}
-        ${toggleHtml ? `<div class="user-item-actions">${toggleHtml}</div>` : ''}
+        <div class="user-item-action-row">${editBtn}${resetBtn}${deleteBtn}</div>
       `;
-      userList?.append(li);
-    });
 
-    // Wire permission toggles
-    userList?.querySelectorAll('input[data-user-id]').forEach((checkbox) => {
-      checkbox.addEventListener('change', async () => {
-        const userId = checkbox.dataset.userId;
-        const canManage = checkbox.checked;
-        checkbox.disabled = true;
+      // Store user data for button handlers
+      li.querySelector('[data-action="edit"]')?.addEventListener('click', () => openEditModal(user));
 
-        const supabaseUrl2 = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
-        const resp2 = await fetch(`${supabaseUrl2}/functions/v1/update-user-permissions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${teacherAuthState.session.access_token}`,
-          },
-          body: JSON.stringify({ userId, canManageUsers: canManage }),
-        });
-
-        if (!resp2.ok) {
-          checkbox.checked = !canManage;
-          renderPageMessage('Failed to update permissions. Please try again.', true);
+      li.querySelector('[data-action="reset"]')?.addEventListener('click', async () => {
+        if (!globalThis.confirm(`Reset password for ${user.email}? They will be required to set a new password on next sign-in.`)) return;
+        const resp2 = await callAdminApi('admin-update-user', { userId: user.id, resetPassword: true });
+        if (resp2.ok) {
+          renderPageMessage(`Password reset for ${user.email}. Temporary password: TempPass#1`, false);
+        } else {
+          renderPageMessage('Failed to reset password.', true);
         }
-        checkbox.disabled = false;
       });
+
+      li.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
+        if (!globalThis.confirm(`Permanently delete ${user.email}? This cannot be undone.`)) return;
+        const resp3 = await callAdminApi('delete-user', { userId: user.id });
+        if (resp3.ok) {
+          renderPageMessage(`${user.email} has been deleted.`);
+          loadUsers();
+        } else {
+          renderPageMessage('Failed to delete user.', true);
+        }
+      });
+
+      userList?.append(li);
     });
   };
 
@@ -642,20 +745,13 @@ function initAdminUsersPage() {
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-
-    if (!teacherAuthState.session) {
-      renderCreateMessage('Not signed in.', true);
-      return;
-    }
-
-    if (!canAccessUserManagement(teacherAuthState)) {
+    if (!teacherAuthState.session || !canAccessUserManagement(teacherAuthState)) {
       renderCreateMessage('You do not have permission to create users.', true);
       return;
     }
 
     const email = emailInput.value.trim().toLowerCase();
     const temporaryPassword = passwordInput.value;
-
     if (!email || !temporaryPassword) {
       renderCreateMessage('Email and temporary password are required.', true);
       return;
@@ -669,27 +765,250 @@ function initAdminUsersPage() {
     if (createBtn) createBtn.disabled = true;
     renderCreateMessage('Creating user...');
 
-    const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
-    const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+    const url = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+    const response = await fetch(`${url}/functions/v1/create-user`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${teacherAuthState.session.access_token}`,
       },
-      body: JSON.stringify({ email, temporaryPassword }),
+      body: JSON.stringify({
+        email,
+        temporaryPassword,
+        firstName: firstNameInput?.value?.trim() || '',
+        lastName: lastNameInput?.value?.trim() || '',
+      }),
     });
 
     if (createBtn) createBtn.disabled = false;
-
     if (!response.ok) {
-      const errorText = (await response.text()).trim();
-      renderCreateMessage(errorText || 'Unable to create user. Check edge function deployment.', true);
+      renderCreateMessage((await response.text()) || 'Unable to create user.', true);
       return;
     }
 
-    renderCreateMessage('User created. They must change password at first sign-in.');
+    renderCreateMessage('User created. They must change their password at first sign-in.');
     form.reset();
     loadUsers();
+  });
+}
+
+function initProfilePage() {
+  const profileName = document.getElementById('profileName');
+  const profileEmail = document.getElementById('profileEmail');
+  const profileJoined = document.getElementById('profileJoined');
+  const profileMessage = document.getElementById('profileMessage');
+  const editProfileBtn = document.getElementById('editProfileBtn');
+
+  // Edit profile modal
+  const editModal = document.getElementById('editProfileModal');
+  const editModalClose = document.getElementById('editProfileModalClose');
+  const editModalOverlay = document.getElementById('editProfileModalOverlay');
+  const editProfileForm = document.getElementById('editProfileForm');
+  const editProfileCancel = document.getElementById('editProfileCancel');
+  const profileFirstName = document.getElementById('profileFirstName');
+  const profileLastName = document.getElementById('profileLastName');
+  const editProfileMessage = document.getElementById('editProfileMessage');
+
+  // Change password form (reuses same IDs as change-password page)
+  const pwForm = document.getElementById('changePasswordForm');
+  const newPasswordInput = document.getElementById('newPassword');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const pwMessage = document.getElementById('changePasswordMessage');
+  const strengthFill = document.getElementById('pwStrengthFill');
+  const matchMsg = document.getElementById('pwMatchMsg');
+  const submitBtn = document.getElementById('updatePasswordBtn');
+
+  if (!profileName) return; // not on profile page
+
+  const renderProfileMessage = (text, isError = false) => {
+    if (!profileMessage) return;
+    profileMessage.textContent = text;
+    profileMessage.classList.toggle('error', isError);
+  };
+
+  const renderEditMessage = (text, isError = false) => {
+    if (!editProfileMessage) return;
+    editProfileMessage.textContent = text;
+    editProfileMessage.classList.toggle('error', isError);
+  };
+
+  const populateProfile = (session) => {
+    if (!session) return;
+    const meta = session.user?.user_metadata || {};
+    const firstName = meta.first_name || '';
+    const lastName = meta.last_name || '';
+    const displayName = [firstName, lastName].filter(Boolean).join(' ') || '—';
+    if (profileName) profileName.textContent = displayName;
+    if (profileEmail) profileEmail.textContent = session.user?.email || '—';
+    if (profileJoined) profileJoined.textContent = formatDate(session.user?.created_at);
+  };
+
+  const openEditModal = () => {
+    if (!editModal) return;
+    const meta = teacherAuthState.session?.user?.user_metadata || {};
+    if (profileFirstName) profileFirstName.value = meta.first_name || '';
+    if (profileLastName) profileLastName.value = meta.last_name || '';
+    renderEditMessage('');
+    editModal.classList.add('open');
+    editModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+  };
+
+  const closeEditModal = () => {
+    if (!editModal) return;
+    editModal.classList.remove('open');
+    editModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+  };
+
+  if (editProfileBtn) editProfileBtn.addEventListener('click', openEditModal);
+  if (editModalClose) editModalClose.addEventListener('click', closeEditModal);
+  if (editModalOverlay) editModalOverlay.addEventListener('click', closeEditModal);
+  if (editProfileCancel) editProfileCancel.addEventListener('click', closeEditModal);
+
+  if (editProfileForm) {
+    editProfileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('editProfileSave');
+      if (saveBtn) saveBtn.disabled = true;
+      renderEditMessage('Saving...');
+
+      const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+      const anonKey = globalThis.APP_CONFIG?.supabaseAnonKey || '';
+      const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': anonKey,
+          Authorization: `Bearer ${teacherAuthState.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          data: {
+            first_name: profileFirstName?.value?.trim() || '',
+            last_name: profileLastName?.value?.trim() || '',
+          },
+        }),
+      });
+
+      if (saveBtn) saveBtn.disabled = false;
+      if (!resp.ok) {
+        renderEditMessage('Failed to save profile.', true);
+        return;
+      }
+
+      // Refresh session so profile display updates
+      const { data } = await teacherAuthState.supabase.auth.getSession();
+      if (data?.session) populateProfile(data.session);
+      renderEditMessage('Saved.');
+      setTimeout(closeEditModal, 800);
+    });
+  }
+
+  // Password change logic (voluntary, not forced)
+  if (pwForm && newPasswordInput && confirmPasswordInput) {
+    const rules = [
+      { id: 'req-length',  test: (p) => p.length >= 8 },
+      { id: 'req-upper',   test: (p) => /[A-Z]/.test(p) },
+      { id: 'req-lower',   test: (p) => /[a-z]/.test(p) },
+      { id: 'req-number',  test: (p) => /[0-9]/.test(p) },
+      { id: 'req-special', test: (p) => /[^A-Za-z0-9]/.test(p) },
+    ];
+    const getStrength = (p) => rules.filter((r) => r.test(p)).length;
+    const allMet = (p) => getStrength(p) === rules.length;
+
+    const updateStrengthUi = () => {
+      const p = newPasswordInput.value;
+      const s = getStrength(p);
+      if (strengthFill) strengthFill.dataset.strength = p.length === 0 ? '' : String(s);
+      rules.forEach((r) => {
+        const el = document.getElementById(r.id);
+        if (el) el.classList.toggle('met', r.test(p));
+      });
+      updateSubmitState();
+    };
+
+    const updateMatchUi = () => {
+      const p = newPasswordInput.value;
+      const c = confirmPasswordInput.value;
+      if (!matchMsg) return;
+      if (c.length === 0) {
+        matchMsg.textContent = '';
+        matchMsg.className = 'pw-match-msg';
+      } else if (p === c) {
+        matchMsg.textContent = 'Passwords match';
+        matchMsg.className = 'pw-match-msg match';
+      } else {
+        matchMsg.textContent = 'Passwords do not match';
+        matchMsg.className = 'pw-match-msg no-match';
+      }
+      updateSubmitState();
+    };
+
+    const updateSubmitState = () => {
+      if (!submitBtn) return;
+      const p = newPasswordInput.value;
+      const c = confirmPasswordInput.value;
+      submitBtn.disabled = !(allMet(p) && p === c);
+    };
+
+    newPasswordInput.addEventListener('input', () => {
+      updateStrengthUi();
+      if (confirmPasswordInput.value.length > 0) updateMatchUi();
+    });
+    confirmPasswordInput.addEventListener('input', updateMatchUi);
+
+    const renderPwMessage = (text, isError = false) => {
+      if (!pwMessage) return;
+      pwMessage.textContent = text;
+      pwMessage.classList.toggle('error', isError);
+    };
+
+    pwForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPassword = newPasswordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+      if (!allMet(newPassword) || newPassword !== confirmPassword) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      renderPwMessage('Updating password...');
+
+      const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+      const anonKey = globalThis.APP_CONFIG?.supabaseAnonKey || '';
+      const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': anonKey,
+          Authorization: `Bearer ${teacherAuthState.session?.access_token}`,
+        },
+        body: JSON.stringify({ password: newPassword }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        renderPwMessage(err.message || 'Failed to update password.', true);
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+
+      renderPwMessage('Password updated successfully.');
+      pwForm.reset();
+      if (strengthFill) strengthFill.dataset.strength = '';
+      rules.forEach((r) => {
+        const el = document.getElementById(r.id);
+        if (el) el.classList.remove('met');
+      });
+      if (matchMsg) { matchMsg.textContent = ''; matchMsg.className = 'pw-match-msg'; }
+    });
+  }
+
+  onTeacherAuthChange((authState) => {
+    if (!authState.configured || authState.loading) return;
+    if (!authState.session) {
+      globalThis.location.href = '/login';
+      return;
+    }
+    populateProfile(authState.session);
   });
 }
 
@@ -1802,6 +2121,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initLoginPage();
   initChangePasswordPage();
   initAdminUsersPage();
+  initProfilePage();
   setCurrentYear();
   initActiveNav();
   initQuickGuideTooltip();

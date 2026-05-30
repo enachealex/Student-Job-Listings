@@ -8,6 +8,8 @@ const corsHeaders = {
 type CreateUserPayload = {
   email?: string;
   temporaryPassword?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 Deno.serve(async (req) => {
@@ -50,6 +52,8 @@ Deno.serve(async (req) => {
 
   const email = (payload.email || '').trim().toLowerCase();
   const temporaryPassword = payload.temporaryPassword || '';
+  const firstName = (payload.firstName || '').trim();
+  const lastName = (payload.lastName || '').trim();
 
   if (!email || !temporaryPassword) {
     return new Response('Email and temporaryPassword are required', { status: 400, headers: corsHeaders });
@@ -65,6 +69,8 @@ Deno.serve(async (req) => {
     email_confirm: true,
     user_metadata: {
       must_change_password: true,
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(lastName ? { last_name: lastName } : {}),
     },
   });
 

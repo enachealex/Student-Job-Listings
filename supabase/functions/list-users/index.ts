@@ -45,6 +45,8 @@ Deno.serve(async (req) => {
   const users = (data.users || []).map((u) => ({
     id: u.id,
     email: u.email,
+    firstName: u.user_metadata?.first_name || '',
+    lastName: u.user_metadata?.last_name || '',
     createdAt: u.created_at,
     lastSignIn: u.last_sign_in_at,
     mustChangePassword: u.user_metadata?.must_change_password === true,

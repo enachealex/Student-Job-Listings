@@ -31,7 +31,7 @@
       <div class="container admin-shell">
         <h1 class="admin-page-title">Manage Users</h1>
         <p class="admin-page-subtitle">Create users and manage access permissions.</p>
-        <p class="auth-message error" id="adminUserMessage" aria-live="polite"></p>
+        <p class="auth-message" id="adminUserMessage" aria-live="polite"></p>
 
         <div class="admin-users-layout">
           <!-- Left: user list -->
@@ -52,12 +52,20 @@
             </div>
             <p class="admin-panel-hint">New users must change their password on first sign-in.</p>
             <form id="createUserForm" class="auth-form">
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="newUserFirstName">First Name</label>
+                  <input id="newUserFirstName" type="text" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="newUserLastName">Last Name</label>
+                  <input id="newUserLastName" type="text" autocomplete="off" />
+                </div>
+              </div>
               <label for="newUserEmail">Email</label>
               <input id="newUserEmail" type="email" autocomplete="off" required />
-
               <label for="temporaryPassword">Temporary Password</label>
               <input id="temporaryPassword" type="text" placeholder="At least 8 characters" autocomplete="off" required />
-
               <button class="btn btn-primary" type="submit" id="createUserBtn">Create User</button>
             </form>
             <p class="auth-message" id="createUserMessage" aria-live="polite"></p>
@@ -65,6 +73,43 @@
         </div>
       </div>
     </main>
+
+    <!-- Edit user modal -->
+    <div class="modal" id="editUserModal" aria-modal="true" aria-labelledby="editUserModalTitle" aria-hidden="true">
+      <div class="modal-overlay" id="editUserModalOverlay"></div>
+      <div class="modal-card modal-card-sm">
+        <div class="modal-top">
+          <h3 id="editUserModalTitle">Edit User</h3>
+          <button class="close-btn" type="button" id="editUserModalClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="editUserForm" class="auth-form">
+            <input type="hidden" id="editUserId" />
+            <div class="form-row-2">
+              <div class="field">
+                <label for="editFirstName">First Name</label>
+                <input id="editFirstName" type="text" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="editLastName">Last Name</label>
+                <input id="editLastName" type="text" autocomplete="off" />
+              </div>
+            </div>
+            <label for="editEmail">Email</label>
+            <input id="editEmail" type="email" autocomplete="off" required />
+            <label class="user-permission-toggle" id="editCanManageWrap">
+              <input type="checkbox" id="editCanManage" />
+              Can manage users
+            </label>
+            <div class="form-actions modal-form-actions">
+              <button class="btn btn-muted" type="button" id="editUserCancel">Cancel</button>
+              <button class="btn btn-primary" type="submit" id="editUserSave">Save Changes</button>
+            </div>
+          </form>
+          <p class="auth-message" id="editUserMessage" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
 
     <footer class="footer">
       <div class="container">

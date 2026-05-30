@@ -485,8 +485,96 @@ img {
   cursor: pointer;
 }
 
+/* Profile page */
+.profile-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.profile-info {
+  margin: 0 0 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.profile-row dt {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profile-row dd {
+  margin: 0;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+/* User list action buttons */
+.user-item-action-row {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.user-action-btn {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+}
+
+.user-action-btn.btn-danger {
+  background: linear-gradient(145deg, #b74747, #9e2f2f);
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modal-card-sm {
+  max-width: 440px;
+}
+
+.modal-body {
+  padding: 1.15rem;
+}
+
+.modal-form-actions {
+  margin-top: 1rem;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
 @media (max-width: 720px) {
   .admin-users-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row-2 {
     grid-template-columns: 1fr;
   }
 }
