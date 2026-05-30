@@ -450,26 +450,32 @@ function initChangePasswordPage() {
     isUpdatingPassword = true;
     renderMessage('Updating password...');
 
-    // 15-second timeout guard so the button never stays stuck
-    const timeoutId = setTimeout(() => {
-      if (!isUpdatingPassword) return;
-      isUpdatingPassword = false;
-      renderMessage('Request timed out. Please try again.', true);
-      if (submitBtn) submitBtn.disabled = false;
-    }, 15000);
+    // Call the GoTrue /user endpoint directly with fetch to avoid the Supabase JS
+    // client's internal lock, which can deadlock when updateUser acquires it while
+    // onAuthStateChange is already holding it.
+    const session = teacherAuthState.session;
+    const supabaseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+    const anonKey = globalThis.APP_CONFIG?.supabaseAnonKey || '';
 
     let updateError = null;
     try {
-      const { error } = await teacherAuthState.supabase.auth.updateUser({
-        password: newPassword,
-        data: { must_change_password: false },
+      const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': anonKey,
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ password: newPassword, data: { must_change_password: false } }),
       });
-      updateError = error || null;
+      if (!resp.ok) {
+        const errJson = await resp.json().catch(() => ({}));
+        updateError = new Error(errJson.message || `HTTP ${resp.status}`);
+      }
     } catch (err) {
       updateError = err;
     }
 
-    clearTimeout(timeoutId);
     isUpdatingPassword = false;
 
     if (updateError) {
