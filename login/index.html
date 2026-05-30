@@ -35,6 +35,8 @@
             <label for="loginPassword">Password</label>
             <input id="loginPassword" type="password" autocomplete="current-password" required />
 
+            <div id="loginCaptcha"></div>
+
             <button class="btn btn-primary" type="submit">Sign In</button>
           </form>
           <p class="auth-message" id="loginMessage" aria-live="polite"></p>
@@ -50,6 +52,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
     <script src="/app-config.js?v=20260530"></script>
     <script src="/script.js?v=20260530"></script>
   </body>

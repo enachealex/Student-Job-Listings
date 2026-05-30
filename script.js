@@ -93,19 +93,38 @@ function onTeacherAuthChange(listener) {
 }
 
 async function initTeacherAuth() {
-  const authActionButton = document.getElementById('authActionButton');
-  const settingsUserStatus = document.getElementById('settingsUserStatus');
-  const manageUsersButton = document.getElementById('manageUsersButton');
-  if (!authActionButton || !settingsUserStatus) {
-    return;
-  }
-
+  // Initialize the Supabase client on every page — this must run even on pages
+  // that have no settings UI (e.g. /login), otherwise those pages see configured=false.
   const config = globalThis.APP_CONFIG || {};
   const supabaseUrl = config.supabaseUrl || '';
   const supabaseAnonKey = config.supabaseAnonKey || '';
   const hasRuntimeAuthConfig = Boolean(supabaseUrl && supabaseAnonKey && globalThis.supabase?.createClient);
 
+  teacherAuthState.configured = hasRuntimeAuthConfig;
+  teacherAuthState.supabase = hasRuntimeAuthConfig
+    ? globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey)
+    : null;
+
+  if (!hasRuntimeAuthConfig) {
+    teacherAuthState.session = null;
+    teacherAuthState.isAuthenticated = false;
+    teacherAuthState.isAdmin = false;
+    teacherAuthState.mustChangePassword = false;
+    notifyTeacherAuthChange();
+  }
+
+  // Settings UI wiring — only present on pages with the header settings menu.
+  const authActionButton = document.getElementById('authActionButton');
+  const settingsUserStatus = document.getElementById('settingsUserStatus');
+  const manageUsersButton = document.getElementById('manageUsersButton');
+  const hasSettingsUi = Boolean(authActionButton && settingsUserStatus);
+
   const updateSettingsAuthUi = (statusMessage = '') => {
+    if (!hasSettingsUi) {
+      notifyTeacherAuthChange();
+      return;
+    }
+
     if (manageUsersButton) {
       manageUsersButton.classList.toggle('hidden', !teacherAuthState.isAdmin);
     }
@@ -133,22 +152,9 @@ async function initTeacherAuth() {
     notifyTeacherAuthChange();
   };
 
-  teacherAuthState.configured = hasRuntimeAuthConfig;
-  teacherAuthState.supabase = hasRuntimeAuthConfig
-    ? globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey)
-    : null;
-
-  if (!hasRuntimeAuthConfig) {
-    teacherAuthState.session = null;
-    teacherAuthState.isAuthenticated = false;
-    teacherAuthState.isAdmin = false;
-    teacherAuthState.mustChangePassword = false;
-    updateSettingsAuthUi();
-  }
-
   const refreshAuthState = async () => {
     teacherAuthState.loading = true;
-    updateSettingsAuthUi('Checking session...');
+    if (hasSettingsUi) updateSettingsAuthUi('Checking session...');
 
     const { data, error } = await teacherAuthState.supabase.auth.getSession();
     if (error) {
@@ -183,31 +189,33 @@ async function initTeacherAuth() {
     }
   };
 
-  authActionButton.addEventListener('click', async () => {
-    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+  if (hasSettingsUi) {
+    authActionButton.addEventListener('click', async () => {
+      if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+        closeOpenSettingsMenus();
+        globalThis.location.href = '/login';
+        return;
+      }
+
+      authActionButton.disabled = true;
+
+      if (teacherAuthState.session) {
+        await teacherAuthState.supabase.auth.signOut();
+        teacherAuthState.session = null;
+        teacherAuthState.isAuthenticated = false;
+        teacherAuthState.isAdmin = false;
+        teacherAuthState.mustChangePassword = false;
+        authActionButton.disabled = false;
+        updateSettingsAuthUi('Signed out');
+        closeOpenSettingsMenus();
+        return;
+      }
+
+      authActionButton.disabled = false;
       closeOpenSettingsMenus();
       globalThis.location.href = '/login';
-      return;
-    }
-
-    authActionButton.disabled = true;
-
-    if (teacherAuthState.session) {
-      await teacherAuthState.supabase.auth.signOut();
-      teacherAuthState.session = null;
-      teacherAuthState.isAuthenticated = false;
-      teacherAuthState.isAdmin = false;
-      teacherAuthState.mustChangePassword = false;
-      authActionButton.disabled = false;
-      updateSettingsAuthUi('Signed out');
-      closeOpenSettingsMenus();
-      return;
-    }
-
-    authActionButton.disabled = false;
-    closeOpenSettingsMenus();
-    globalThis.location.href = '/login';
-  });
+    });
+  }
 
   if (teacherAuthState.configured) {
     teacherAuthState.supabase.auth.onAuthStateChange(async () => {
@@ -223,8 +231,20 @@ function initLoginPage() {
   const loginEmail = document.getElementById('loginEmail');
   const loginPassword = document.getElementById('loginPassword');
   const loginMessage = document.getElementById('loginMessage');
+  const captchaContainer = document.getElementById('loginCaptcha');
   if (!loginForm || !loginEmail || !loginPassword || !loginMessage) {
     return;
+  }
+
+  // Render hCaptcha widget once the API script has loaded, using sitekey from config
+  const sitekey = (globalThis.APP_CONFIG?.hcaptchaSitekey || '10000000-ffff-ffff-ffff-000000000001').trim();
+  if (captchaContainer) {
+    captchaContainer.dataset.sitekey = sitekey;
+    captchaContainer.dataset.theme = 'auto';
+    captchaContainer.classList.add('h-captcha');
+    // hCaptcha auto-renders widgets with class h-captcha after its script loads.
+    // If the script already fired (rare), render manually.
+    if (globalThis.hcaptcha) globalThis.hcaptcha.render(captchaContainer, { sitekey });
   }
 
   const renderMessage = (message, isError = false) => {
@@ -272,6 +292,15 @@ function initLoginPage() {
       return;
     }
 
+    // hCaptcha verification — token is set by the widget on completion
+    const captchaToken = loginForm.querySelector('[name="h-captcha-response"]')?.value || '';
+    const sitekey = (globalThis.APP_CONFIG?.hcaptchaSitekey || '').trim();
+    const usingRealCaptcha = sitekey && sitekey !== '10000000-ffff-ffff-ffff-000000000001';
+    if (usingRealCaptcha && !captchaToken) {
+      renderMessage('Please complete the CAPTCHA before signing in.', true);
+      return;
+    }
+
     renderMessage('Signing in...');
     const { error } = await teacherAuthState.supabase.auth.signInWithPassword({
       email,
@@ -280,6 +309,8 @@ function initLoginPage() {
 
     if (error) {
       renderMessage('Sign-in failed. Check your credentials.', true);
+      // Reset captcha so the user can try again
+      if (globalThis.hcaptcha) globalThis.hcaptcha.reset();
       return;
     }
 
