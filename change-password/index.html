@@ -30,12 +30,24 @@
           <p class="auth-subtext">For security, you must update your password before managing jobs.</p>
           <form id="changePasswordForm" class="auth-form">
             <label for="newPassword">New Password</label>
-            <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
+            <input id="newPassword" type="password" autocomplete="new-password" required />
+
+            <div class="pw-strength-bar" aria-hidden="true">
+              <div id="pwStrengthFill" class="pw-strength-fill"></div>
+            </div>
+            <ul class="pw-requirements" id="pwRequirements" aria-live="polite">
+              <li id="req-length"  class="pw-req">At least 8 characters</li>
+              <li id="req-upper"   class="pw-req">One uppercase letter (A–Z)</li>
+              <li id="req-lower"   class="pw-req">One lowercase letter (a–z)</li>
+              <li id="req-number"  class="pw-req">One number (0–9)</li>
+              <li id="req-special" class="pw-req">One special character (!@#$…)</li>
+            </ul>
 
             <label for="confirmPassword">Confirm Password</label>
-            <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required />
+            <input id="confirmPassword" type="password" autocomplete="new-password" required />
+            <p class="pw-match-msg" id="pwMatchMsg" aria-live="polite"></p>
 
-            <button class="btn btn-primary" type="submit">Update Password</button>
+            <button class="btn btn-primary" id="updatePasswordBtn" type="submit" disabled>Update Password</button>
           </form>
           <p class="auth-message" id="changePasswordMessage" aria-live="polite"></p>
         </section>

@@ -323,9 +323,73 @@ function initChangePasswordPage() {
   const newPasswordInput = document.getElementById('newPassword');
   const confirmPasswordInput = document.getElementById('confirmPassword');
   const message = document.getElementById('changePasswordMessage');
+  const strengthFill = document.getElementById('pwStrengthFill');
+  const matchMsg = document.getElementById('pwMatchMsg');
+  const submitBtn = document.getElementById('updatePasswordBtn');
   if (!form || !newPasswordInput || !confirmPasswordInput || !message) {
     return;
   }
+
+  const rules = [
+    { id: 'req-length',  test: (p) => p.length >= 8 },
+    { id: 'req-upper',   test: (p) => /[A-Z]/.test(p) },
+    { id: 'req-lower',   test: (p) => /[a-z]/.test(p) },
+    { id: 'req-number',  test: (p) => /[0-9]/.test(p) },
+    { id: 'req-special', test: (p) => /[^A-Za-z0-9]/.test(p) },
+  ];
+
+  const getStrength = (password) => rules.filter((r) => r.test(password)).length;
+
+  const allRulesMet = (password) => getStrength(password) === rules.length;
+
+  const updateStrengthUi = () => {
+    const password = newPasswordInput.value;
+    const strength = getStrength(password);
+
+    if (strengthFill) {
+      strengthFill.dataset.strength = password.length === 0 ? '' : String(strength);
+    }
+
+    rules.forEach((rule) => {
+      const el = document.getElementById(rule.id);
+      if (el) el.classList.toggle('met', rule.test(password));
+    });
+
+    updateSubmitState();
+  };
+
+  const updateMatchUi = () => {
+    const pw = newPasswordInput.value;
+    const confirm = confirmPasswordInput.value;
+    if (!matchMsg) return;
+
+    if (confirm.length === 0) {
+      matchMsg.textContent = '';
+      matchMsg.className = 'pw-match-msg';
+    } else if (pw === confirm) {
+      matchMsg.textContent = 'Passwords match';
+      matchMsg.className = 'pw-match-msg match';
+    } else {
+      matchMsg.textContent = 'Passwords do not match';
+      matchMsg.className = 'pw-match-msg no-match';
+    }
+
+    updateSubmitState();
+  };
+
+  const updateSubmitState = () => {
+    if (!submitBtn) return;
+    const pw = newPasswordInput.value;
+    const confirm = confirmPasswordInput.value;
+    submitBtn.disabled = !(allRulesMet(pw) && pw === confirm);
+  };
+
+  newPasswordInput.addEventListener('input', () => {
+    updateStrengthUi();
+    if (confirmPasswordInput.value.length > 0) updateMatchUi();
+  });
+
+  confirmPasswordInput.addEventListener('input', updateMatchUi);
 
   const renderMessage = (text, isError = false) => {
     message.textContent = text;
@@ -365,8 +429,8 @@ function initChangePasswordPage() {
     const newPassword = newPasswordInput.value;
     const confirmPassword = confirmPasswordInput.value;
 
-    if (newPassword.length < 8) {
-      renderMessage('New password must be at least 8 characters.', true);
+    if (!allRulesMet(newPassword)) {
+      renderMessage('Password does not meet all requirements.', true);
       return;
     }
 
@@ -375,16 +439,16 @@ function initChangePasswordPage() {
       return;
     }
 
+    if (submitBtn) submitBtn.disabled = true;
     renderMessage('Updating password...');
     const { error } = await teacherAuthState.supabase.auth.updateUser({
       password: newPassword,
-      data: {
-        must_change_password: false,
-      },
+      data: { must_change_password: false },
     });
 
     if (error) {
       renderMessage('Unable to update password.', true);
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
 

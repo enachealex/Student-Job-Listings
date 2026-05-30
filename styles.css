@@ -350,6 +350,71 @@ img {
   color: var(--muted);
 }
 
+/* Password strength bar */
+.pw-strength-bar {
+  height: 6px;
+  background: var(--border, #e5e7eb);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.pw-strength-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.pw-strength-fill[data-strength="1"] { width: 20%; background: #ef4444; }
+.pw-strength-fill[data-strength="2"] { width: 40%; background: #f97316; }
+.pw-strength-fill[data-strength="3"] { width: 60%; background: #eab308; }
+.pw-strength-fill[data-strength="4"] { width: 80%; background: #84cc16; }
+.pw-strength-fill[data-strength="5"] { width: 100%; background: #22c55e; }
+
+/* Password requirements list */
+.pw-requirements {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0.2rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.pw-req {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding-left: 1.4rem;
+  position: relative;
+}
+
+.pw-req::before {
+  content: '✗';
+  position: absolute;
+  left: 0;
+  color: var(--danger, #ef4444);
+  font-weight: 700;
+}
+
+.pw-req.met {
+  color: #16a34a;
+}
+
+.pw-req.met::before {
+  content: '✓';
+  color: #16a34a;
+}
+
+/* Password match indicator */
+.pw-match-msg {
+  font-size: 0.82rem;
+  min-height: 1.1em;
+  margin: 0.1rem 0 0.2rem;
+}
+
+.pw-match-msg.match { color: #16a34a; }
+.pw-match-msg.no-match { color: var(--danger, #ef4444); }
+
 
 
 main {
