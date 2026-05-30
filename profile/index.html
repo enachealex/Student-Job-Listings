@@ -22,7 +22,36 @@
           <span>PTA Student Job Hub</span>
         </a>
         <nav class="nav-links" aria-label="Main navigation">
-          <a class="nav-link" href="/jobs">Jobs</a>
+          <a class="nav-link" data-page="home" href="/">Home</a>
+          <a class="nav-link" data-page="about" href="/about">About</a>
+          <a class="nav-link" data-page="jobs" href="/jobs">Jobs</a>
+          <div class="settings-menu">
+            <button
+              class="settings-trigger"
+              type="button"
+              aria-label="Open settings menu"
+              aria-expanded="false"
+              aria-haspopup="menu"
+            >
+              <span class="settings-dots" aria-hidden="true">⋮</span>
+              <span class="settings-label">Settings</span>
+            </button>
+            <div class="settings-panel" aria-hidden="true">
+              <button
+                class="theme-toggle"
+                id="themeToggle"
+                type="button"
+                aria-label="Dark Mode"
+                aria-pressed="false"
+              >
+                Dark Mode
+              </button>
+              <p class="settings-user" id="settingsUserStatus">User: Not signed in</p>
+              <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
+              <a class="settings-link hidden" id="profileButton" href="/profile">Profile</a>
+              <a class="settings-link hidden" id="manageUsersButton" href="/admin-users">Manage Users</a>
+            </div>
+          </div>
         </nav>
       </div>
     </header>
