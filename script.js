@@ -396,7 +396,12 @@ function initChangePasswordPage() {
     message.classList.toggle('error', isError);
   };
 
+  // Prevents the onAuthStateChange listener from redirecting mid-update
+  let isUpdatingPassword = false;
+
   onTeacherAuthChange((authState) => {
+    if (isUpdatingPassword) return;
+
     if (!authState.configured) {
       renderMessage('Password update is not configured yet.', true);
       return;
@@ -440,20 +445,49 @@ function initChangePasswordPage() {
     }
 
     if (submitBtn) submitBtn.disabled = true;
+    isUpdatingPassword = true;
     renderMessage('Updating password...');
-    const { error } = await teacherAuthState.supabase.auth.updateUser({
-      password: newPassword,
-      data: { must_change_password: false },
-    });
 
-    if (error) {
-      renderMessage('Unable to update password.', true);
+    // 15-second timeout guard so the button never stays stuck
+    const timeoutId = setTimeout(() => {
+      if (!isUpdatingPassword) return;
+      isUpdatingPassword = false;
+      renderMessage('Request timed out. Please try again.', true);
+      if (submitBtn) submitBtn.disabled = false;
+    }, 15000);
+
+    let updateError = null;
+    try {
+      const { error } = await teacherAuthState.supabase.auth.updateUser({
+        password: newPassword,
+        data: { must_change_password: false },
+      });
+      updateError = error || null;
+    } catch (err) {
+      updateError = err;
+    }
+
+    clearTimeout(timeoutId);
+    isUpdatingPassword = false;
+
+    if (updateError) {
+      renderMessage(`Unable to update password: ${updateError.message || 'unknown error'}`, true);
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
 
-    renderMessage('Password updated. Redirecting...');
-    globalThis.location.href = '/jobs';
+    // Sign out so the user must log in fresh with the new password
+    renderMessage('Password updated. Signing out...');
+    try {
+      await teacherAuthState.supabase.auth.signOut();
+    } catch {
+      // sign-out failure is non-fatal — session expires naturally
+    }
+
+    renderMessage('Password updated. Please sign in with your new password.');
+    setTimeout(() => {
+      globalThis.location.href = '/login';
+    }, 1500);
   });
 }
 
