@@ -915,8 +915,11 @@ function initProfileModal() {
       if (saveBtn) saveBtn.disabled = false;
       if (!resp.ok) { renderMsg(editMsg, 'Failed to save.', true); return; }
 
-      const { data } = await teacherAuthState.supabase.auth.getSession();
-      if (data?.session) populateInfo(data.session);
+      const updatedUser = await resp.json().catch(() => null);
+      if (updatedUser && teacherAuthState.session) {
+        teacherAuthState.session = { ...teacherAuthState.session, user: updatedUser };
+        populateInfo(teacherAuthState.session);
+      }
       renderMsg(editMsg, 'Profile saved.');
       setTimeout(() => { showEditForm(false); renderMsg(editMsg, ''); }, 1000);
     });
