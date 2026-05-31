@@ -913,13 +913,20 @@ function initProfileModal() {
       });
 
       if (saveBtn) saveBtn.disabled = false;
-      if (!resp.ok) { renderMsg(editMsg, 'Failed to save.', true); return; }
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        renderMsg(editMsg, errBody.message || `Failed to save (${resp.status}).`, true);
+        return;
+      }
 
       const updatedUser = await resp.json().catch(() => null);
       if (updatedUser && teacherAuthState.session) {
-        teacherAuthState.session = { ...teacherAuthState.session, user: updatedUser };
+        const merged = { ...teacherAuthState.session.user, ...updatedUser };
+        teacherAuthState.session = { ...teacherAuthState.session, user: merged };
         populateInfo(teacherAuthState.session);
       }
+      // Refresh the JWT so updated user_metadata persists across page loads
+      teacherAuthState.supabase?.auth.refreshSession().catch(() => {});
       renderMsg(editMsg, 'Profile saved.');
       setTimeout(() => { showEditForm(false); renderMsg(editMsg, ''); }, 1000);
     });
