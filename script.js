@@ -55,6 +55,26 @@ function createLocalDevSession() {
   };
 }
 
+// Clears persisted Supabase auth so the client cannot call refresh_token.
+// Needed while api.thejumpvault.com returns 500 on OPTIONS preflights for /auth/v1/token.
+function clearSupabaseAuthStorage() {
+  try {
+    const keysToRemove = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key) {
+        continue;
+      }
+      if (/^sb-.*-auth-token/i.test(key) || key.toLowerCase().includes('supabase.auth')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // Ignore storage access errors (private mode, etc.).
+  }
+}
+
 function getPathname() {
   return (globalThis.location?.pathname || '/').replace(/\/+$/, '') || '/';
 }
@@ -125,27 +145,36 @@ async function initTeacherAuth() {
   const localDevHost = isLocalDevHost();
   const hasRuntimeAuthConfig = Boolean(supabaseUrl && supabaseAnonKey && globalThis.supabase?.createClient);
 
+  // api.thejumpvault.com currently fails CORS preflight (OPTIONS -> 500) for auth token
+  // routes. Clear any stored session once per tab so supabase-js cannot enter a refresh_token loop.
+  try {
+    const corsAuthResetKey = 'sjhAuthCorsResetV1';
+    if (!sessionStorage.getItem(corsAuthResetKey)) {
+      clearSupabaseAuthStorage();
+      sessionStorage.setItem(corsAuthResetKey, '1');
+    }
+  } catch {
+    clearSupabaseAuthStorage();
+  }
+
   teacherAuthState.configured = hasRuntimeAuthConfig;
   teacherAuthState.supabase = hasRuntimeAuthConfig
     ? globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey, {
-        auth: localDevHost
-          ? {
-              // Avoid refresh_token calls on localhost — api.thejumpvault.com currently
-              // fails CORS preflight (OPTIONS) for /auth/v1/token.
-              autoRefreshToken: false,
-              persistSession: false,
-              detectSessionInUrl: false,
-              storage: {
-                getItem: () => null,
-                setItem: () => {},
-                removeItem: () => {},
-              },
-            }
-          : {
-              autoRefreshToken: true,
-              persistSession: true,
-              detectSessionInUrl: true,
-            },
+        auth: {
+          // Keep disabled until api.thejumpvault.com handles OPTIONS correctly for /auth/v1/token.
+          autoRefreshToken: false,
+          persistSession: !localDevHost,
+          detectSessionInUrl: !localDevHost,
+          ...(localDevHost
+            ? {
+                storage: {
+                  getItem: () => null,
+                  setItem: () => {},
+                  removeItem: () => {},
+                },
+              }
+            : {}),
+        },
       })
     : null;
 
@@ -333,6 +362,7 @@ async function initTeacherAuth() {
       if (error) {
         teacherAuthState.loading = false;
         // Clear a broken persisted session so the client stops retrying refresh_token.
+        clearSupabaseAuthStorage();
         teacherAuthState.supabase.auth.signOut({ scope: 'local' }).catch(() => {});
         applySession(null, true);
         return;
@@ -347,6 +377,7 @@ async function initTeacherAuth() {
     }).catch(() => {
       initialLoadDone = true;
       teacherAuthState.loading = false;
+      clearSupabaseAuthStorage();
       teacherAuthState.supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       applySession(null, true);
     });
