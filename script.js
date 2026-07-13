@@ -122,11 +122,31 @@ async function initTeacherAuth() {
   const config = globalThis.APP_CONFIG || {};
   const supabaseUrl = config.supabaseUrl || '';
   const supabaseAnonKey = config.supabaseAnonKey || '';
+  const localDevHost = isLocalDevHost();
   const hasRuntimeAuthConfig = Boolean(supabaseUrl && supabaseAnonKey && globalThis.supabase?.createClient);
 
   teacherAuthState.configured = hasRuntimeAuthConfig;
   teacherAuthState.supabase = hasRuntimeAuthConfig
-    ? globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey)
+    ? globalThis.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+        auth: localDevHost
+          ? {
+              // Avoid refresh_token calls on localhost — api.thejumpvault.com currently
+              // fails CORS preflight (OPTIONS) for /auth/v1/token.
+              autoRefreshToken: false,
+              persistSession: false,
+              detectSessionInUrl: false,
+              storage: {
+                getItem: () => null,
+                setItem: () => {},
+                removeItem: () => {},
+              },
+            }
+          : {
+              autoRefreshToken: true,
+              persistSession: true,
+              detectSessionInUrl: true,
+            },
+      })
     : null;
 
   if (!hasRuntimeAuthConfig) {
@@ -294,7 +314,7 @@ async function initTeacherAuth() {
     });
   }
 
-  if (teacherAuthState.supabase) {
+  if (teacherAuthState.supabase && !localDevHost) {
     let initialLoadDone = false;
 
     // Use the session passed directly by the SDK — never call getSession() here.
@@ -312,9 +332,9 @@ async function initTeacherAuth() {
       initialLoadDone = true;
       if (error) {
         teacherAuthState.loading = false;
-        if (!applyLocalDevAuth()) {
-          updateSettingsAuthUi();
-        }
+        // Clear a broken persisted session so the client stops retrying refresh_token.
+        teacherAuthState.supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        applySession(null, true);
         return;
       }
 
@@ -323,11 +343,14 @@ async function initTeacherAuth() {
         return;
       }
 
-      if (!applyLocalDevAuth()) {
-        applySession(null, true);
-      }
+      applySession(null, true);
+    }).catch(() => {
+      initialLoadDone = true;
+      teacherAuthState.loading = false;
+      teacherAuthState.supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      applySession(null, true);
     });
-  } else if (isLocalDevHost()) {
+  } else if (localDevHost) {
     applyLocalDevAuth();
   }
 }
