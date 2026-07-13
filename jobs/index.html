@@ -6,23 +6,23 @@
     <script>if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
     <meta
       name="description"
-      content="Post and browse Idaho Physical Therapy Assistant job listings for college students."
+      content="Post and browse Idaho student job listings for college students and faculty."
     />
-    <title>PTA Student Job Hub | Jobs</title>
+    <title>Student Job Hub | Jobs</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260534" />
+    <link rel="stylesheet" href="/styles.css?v=20260713c" />
   </head>
   <body data-page="jobs">
     <header class="site-header">
       <div class="container header-inner">
-        <a class="brand" href="/" aria-label="PTA Student Job Hub home">
-          <span class="brand-mark">PT</span>
-          <span>PTA Student Job Hub</span>
+        <a class="brand" href="/" aria-label="Student Job Hub home">
+          <img class="brand-mark" src="/assets/jump-vault-logo.png" alt="The Jump Vault" width="38" height="38" />
+          <span>Student Job Hub</span>
         </a>
         <nav class="nav-links" aria-label="Main navigation">
           <a class="nav-link" data-page="home" href="/">Home</a>
@@ -49,9 +49,9 @@
               >
                 Dark Mode
               </button>
-              <p class="settings-user" id="settingsUserStatus">User: Not signed in</p>
+              <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
-              <button class="settings-link hidden" id="profileButton" type="button">Profile</button>
+              <button class="settings-link hidden" id="profileButton" type="button">User</button>
               <a class="settings-link hidden" id="manageUsersButton" href="/admin-users">Manage Users</a>
             </div>
           </div>
@@ -60,98 +60,184 @@
     </header>
 
     <main>
-      <div class="container">
-        <section class="hero reveal">
-          <div class="hero-content">
-            <div>
-              <p class="eyebrow">PTA Jobs Board</p>
-              <h1>Opportunities for Physical Therapy Assistant Students</h1>
-              <div class="cta-row">
-                <button class="btn btn-primary" id="openUpload" type="button">
-                  Upload Job Listing
-                </button>
-                <div class="guide-tooltip-wrap">
-                  <button
-                    class="btn btn-muted guide-trigger"
-                    id="quickGuideTrigger"
-                    type="button"
-                    aria-expanded="false"
-                    aria-controls="quickGuideTooltip"
-                  >
-                    Quick Posting Guide
-                  </button>
-                  <aside
-                    class="guide-tooltip"
-                    id="quickGuideTooltip"
-                    role="tooltip"
-                    aria-labelledby="quickGuideTitle"
-                    aria-hidden="true"
-                  >
-                    <h2 id="quickGuideTitle">Quick Posting Guide</h2>
-                    <p>
-                      Select Upload Job Listing, choose your posting method, and submit.
-                      New entries appear instantly in Current Listings.
-                    </p>
-                    <ol class="guide-steps">
-                      <li>Open Upload</li>
-                      <li>Choose URL or Template</li>
-                      <li>Submit and Publish</li>
-                    </ol>
-                  </aside>
-                </div>
-              </div>
-              <p class="teacher-access-note" id="teacherAccessNotice" aria-live="polite"></p>
-            </div>
-            <aside class="hero-panel reveal reveal-delay-2" aria-label="Posting process summary">
-              <strong>Graduating Soon?</strong>
-              <p>
-                Explore Idaho PTA openings from faculty posted links and detailed
-                listings built for college students preparing to enter practice.
-              </p>
-            </aside>
-          </div>
-        </section>
+      <div class="jobs-shell">
+        <aside class="jobs-type-sidebar" aria-label="Job types">
+          <p class="jobs-type-section-label" id="jobTypesHeading">Job Types</p>
+          <nav class="jobs-type-nav" role="tablist" aria-labelledby="jobTypesHeading">
+            <button
+              class="jobs-type-link jobs-type-link-active"
+              type="button"
+              role="tab"
+              id="jobTypePta"
+              data-category="pta"
+              aria-selected="true"
+              aria-controls="jobsList"
+            >
+              Physical Therapy Assistant
+            </button>
+            <button
+              class="jobs-type-link"
+              type="button"
+              role="tab"
+              id="jobTypeCivil"
+              data-category="civil-engineering"
+              aria-selected="false"
+              aria-controls="jobsList"
+            >
+              Civil Engineering
+            </button>
+          </nav>
+        </aside>
 
-        <section class="section">
-          <section class="listings reveal reveal-delay-1" aria-labelledby="currentListingsTitle">
-            <h2 id="currentListingsTitle">Current Listings</h2>
-            <p class="section-subtitle">
-              These opportunities are for Physical Therapist Assistants searching for jobs.
-            </p>
-            <ul class="jobs-list" id="jobsList" aria-live="polite">
-              <li class="job-item">
-                <div class="job-item-head">
-                  <div class="job-heading-stack">
-                    <p class="job-organization">Riverbend Rehabilitation</p>
-                    <h3 class="job-role">PTA Student Assistant</h3>
+        <div class="jobs-content">
+          <div class="container">
+            <section class="hero reveal">
+              <div class="hero-content">
+                <div>
+                  <p class="eyebrow" id="jobsHeroEyebrow">PTA Jobs Board</p>
+                  <h1 id="jobsHeroTitle">Opportunities for Physical Therapy Assistant Students</h1>
+                  <div class="cta-row">
+                    <button class="btn btn-primary" id="openUpload" type="button">
+                      Upload Job Listing
+                    </button>
+                    <div class="guide-tooltip-wrap">
+                      <button
+                        class="btn btn-muted guide-trigger"
+                        id="quickGuideTrigger"
+                        type="button"
+                        aria-expanded="false"
+                        aria-controls="quickGuideTooltip"
+                      >
+                        Quick Posting Guide
+                      </button>
+                      <aside
+                        class="guide-tooltip"
+                        id="quickGuideTooltip"
+                        role="tooltip"
+                        aria-labelledby="quickGuideTitle"
+                        aria-hidden="true"
+                      >
+                        <h2 id="quickGuideTitle">Quick Posting Guide</h2>
+                        <p>
+                          Select Upload Job Listing, choose your posting method, and submit.
+                          New entries appear instantly in Current Listings.
+                        </p>
+                        <ol class="guide-steps">
+                          <li>Open Upload</li>
+                          <li>Choose URL or Template</li>
+                          <li>Submit and Publish</li>
+                        </ol>
+                      </aside>
+                    </div>
                   </div>
-                  <span class="job-tag">Part-Time</span>
+                  <p class="teacher-access-note" id="teacherAccessNotice" aria-live="polite"></p>
                 </div>
-                <p class="job-location">Coeur d'Alene, ID</p>
-                <p class="job-notes">
-                  Support licensed therapists with patient prep, mobility activities, and
-                  documentation support in an outpatient setting.
+                <aside class="hero-panel reveal reveal-delay-2" aria-label="Posting process summary">
+                  <strong id="jobsHeroPanelTitle">Graduating Soon?</strong>
+                  <p id="jobsHeroPanelBody">
+                    Explore Idaho PTA openings from faculty posted links and detailed
+                    listings built for college students preparing to enter practice.
+                  </p>
+                </aside>
+              </div>
+            </section>
+
+            <section class="section">
+              <section class="listings reveal reveal-delay-1" aria-labelledby="currentListingsTitle">
+                <h2 id="currentListingsTitle">Current Listings</h2>
+                <p class="section-subtitle" id="listingsSubtitle">
+                  These opportunities are for Physical Therapist Assistants searching for jobs.
                 </p>
-                <p class="job-notes">Posted via template form</p>
-              </li>
-              <li class="job-item">
-                <div class="job-item-head">
-                  <div class="job-heading-stack">
-                    <p class="job-organization">Summit Ortho Care</p>
-                    <h3 class="job-role">PTA Rehab Technician</h3>
+
+                <form class="jobs-toolbar" id="jobsToolbar" aria-label="Sort and filter listings">
+                  <div class="jobs-toolbar-grid">
+                    <div class="field jobs-toolbar-search">
+                      <label for="jobsSearch">Search</label>
+                      <input
+                        id="jobsSearch"
+                        type="search"
+                        placeholder="Role, organization, or keywords"
+                        autocomplete="off"
+                      />
+                    </div>
+                    <div class="field">
+                      <label for="jobsFilterType">Employment Type</label>
+                      <select id="jobsFilterType">
+                        <option value="">All types</option>
+                        <option value="Part-Time">Part-Time</option>
+                        <option value="Full-Time">Full-Time</option>
+                        <option value="Clinical">Clinical</option>
+                        <option value="Internship">Internship</option>
+                        <option value="URL">URL</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="jobsFilterState">State</label>
+                      <select id="jobsFilterState">
+                        <option value="">All states</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="jobsFilterCity">City</label>
+                      <select id="jobsFilterCity">
+                        <option value="">All cities</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="jobsSort">Sort by</label>
+                      <select id="jobsSort">
+                        <option value="newest">Newest first</option>
+                        <option value="role-asc">Role A–Z</option>
+                        <option value="role-desc">Role Z–A</option>
+                        <option value="org-asc">Organization A–Z</option>
+                        <option value="location-asc">Location A–Z</option>
+                        <option value="pay-desc">Pay: high to low</option>
+                        <option value="pay-asc">Pay: low to high</option>
+                      </select>
+                    </div>
                   </div>
-                  <span class="job-tag">Clinical</span>
-                </div>
-                <p class="job-location">Boise, ID</p>
-                <p class="job-notes">
-                  Assist with therapeutic exercise flow, treatment room turnover, and
-                  patient education resources for a fast-moving clinic.
-                </p>
-                <p class="job-notes">Posted via URL upload</p>
-              </li>
-            </ul>
-          </section>
-        </section>
+                  <div class="jobs-toolbar-actions">
+                    <p class="jobs-result-count" id="jobsResultCount" aria-live="polite"></p>
+                    <button class="btn btn-muted" id="jobsClearFilters" type="button">Clear filters</button>
+                  </div>
+                </form>
+
+                <ul class="jobs-list" id="jobsList" aria-live="polite" role="tabpanel" aria-labelledby="jobTypePta">
+                  <li class="job-item" data-category="pta">
+                    <div class="job-item-head">
+                      <div class="job-heading-stack">
+                        <p class="job-organization">Riverbend Rehabilitation</p>
+                        <h3 class="job-role">PTA Student Assistant</h3>
+                      </div>
+                      <span class="job-tag">Part-Time</span>
+                    </div>
+                    <p class="job-location">Coeur d'Alene, ID</p>
+                    <p class="job-notes">
+                      Support licensed therapists with patient prep, mobility activities, and
+                      documentation support in an outpatient setting.
+                    </p>
+                    <p class="job-notes">Posted via template form</p>
+                  </li>
+                  <li class="job-item" data-category="pta">
+                    <div class="job-item-head">
+                      <div class="job-heading-stack">
+                        <p class="job-organization">Summit Ortho Care</p>
+                        <h3 class="job-role">PTA Rehab Technician</h3>
+                      </div>
+                      <span class="job-tag">Clinical</span>
+                    </div>
+                    <p class="job-location">Boise, ID</p>
+                    <p class="job-notes">
+                      Assist with therapeutic exercise flow, treatment room turnover, and
+                      patient education resources for a fast-moving clinic.
+                    </p>
+                    <p class="job-notes">Posted via URL upload</p>
+                  </li>
+                </ul>
+              </section>
+            </section>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -177,6 +263,16 @@
         <section class="tab-panel active" id="urlPanel" role="tabpanel">
           <form id="urlForm">
             <div class="form-grid">
+              <div class="field full">
+                <label for="listingJobType">Job Type</label>
+                <select id="listingJobType" name="listingJobType" required>
+                  <option value="pta">Physical Therapy Assistant</option>
+                  <option value="civil-engineering">Civil Engineering</option>
+                </select>
+                <p class="upload-job-type-note" id="listingJobTypeNote">
+                  This listing will appear under the selected Job Type.
+                </p>
+              </div>
               <div class="field full">
                 <label for="urlRoleTitle">Job Title</label>
                 <input id="urlRoleTitle" name="urlRoleTitle" type="text" placeholder="PTA Rehab Technician" required />
@@ -214,6 +310,16 @@
         <section class="tab-panel" id="templatePanel" role="tabpanel">
           <form id="templateForm">
             <div class="form-grid">
+              <div class="field full">
+                <label for="listingJobTypeTemplate">Job Type</label>
+                <select id="listingJobTypeTemplate" name="listingJobTypeTemplate" required>
+                  <option value="pta">Physical Therapy Assistant</option>
+                  <option value="civil-engineering">Civil Engineering</option>
+                </select>
+                <p class="upload-job-type-note" id="listingJobTypeTemplateNote">
+                  This listing will appear under the selected Job Type.
+                </p>
+              </div>
               <div class="field">
                 <label for="role">Role Title</label>
                 <input id="role" name="role" type="text" placeholder="PTA Student Assistant" required />
@@ -282,6 +388,7 @@
           <h3 id="jobDetailsHeading">Job Listing Details</h3>
           <div class="modal-top-actions">
             <button class="btn btn-muted modal-edit-btn" id="editJobDetails" type="button">Edit Listing</button>
+            <button class="btn btn-danger modal-delete-btn" id="deleteJobDetails" type="button">Remove Listing</button>
             <button class="close-btn" id="closeJobDetails" type="button" aria-label="Close job details">
               <span aria-hidden="true">&times;</span>
             </button>
@@ -292,7 +399,7 @@
           <section class="job-details-info" aria-label="Job details panel">
             <p class="details-kicker" id="detailsType">Listing</p>
             <p class="details-organization" id="detailsOrganization">Organization</p>
-            <h4 class="details-title" id="detailsRole">PTA Role</h4>
+            <h4 class="details-title" id="detailsRole">Job Role</h4>
             <p class="details-meta" id="detailsMeta">Location</p>
             <p class="details-description" id="detailsDescription">No description provided.</p>
             <div class="details-section" id="detailsPhoneSection" hidden>
@@ -318,7 +425,7 @@
 
     <footer class="footer">
       <div class="container">
-        <small>PTA Student Job Hub | <span data-year></span></small>
+        <small>Student Job Hub | <span data-year></span></small>
       </div>
     </footer>
 
@@ -388,7 +495,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/app-config.js?v=20260534"></script>
-    <script src="/script.js?v=20260534"></script>
+    <script src="/app-config.js?v=20260713c"></script>
+    <script src="/script.js?v=20260713c"></script>
   </body>
 </html>

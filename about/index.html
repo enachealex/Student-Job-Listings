@@ -6,23 +6,23 @@
     <script>if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
     <meta
       name="description"
-      content="About the Idaho PTA Student Job Hub and how faculty and college students use it statewide."
+      content="About the Idaho Student Job Hub and how faculty and college students use it statewide."
     />
-    <title>PTA Student Job Hub | About</title>
+    <title>Student Job Hub | About</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260534" />
+    <link rel="stylesheet" href="/styles.css?v=20260713" />
   </head>
   <body data-page="about">
     <header class="site-header">
       <div class="container header-inner">
-        <a class="brand" href="/" aria-label="PTA Student Job Hub home">
-          <span class="brand-mark">PT</span>
-          <span>PTA Student Job Hub</span>
+        <a class="brand" href="/" aria-label="Student Job Hub home">
+          <img class="brand-mark" src="/assets/jump-vault-logo.png" alt="The Jump Vault" width="38" height="38" />
+          <span>Student Job Hub</span>
         </a>
         <nav class="nav-links" aria-label="Main navigation">
           <a class="nav-link" data-page="home" href="/">Home</a>
@@ -49,9 +49,9 @@
               >
                 Dark Mode
               </button>
-              <p class="settings-user" id="settingsUserStatus">User: Not signed in</p>
+              <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
-              <button class="settings-link hidden" id="profileButton" type="button">Profile</button>
+              <button class="settings-link hidden" id="profileButton" type="button">User</button>
               <a class="settings-link hidden" id="manageUsersButton" href="/admin-users">Manage Users</a>
             </div>
           </div>
@@ -65,11 +65,12 @@
           <div class="hero-content">
             <div>
               <p class="eyebrow">About The Platform</p>
-              <h1>Purpose-Built for Idaho PTA Faculty and Student Success</h1>
+              <h1>Purpose-Built for Idaho Faculty and Student Success</h1>
               <p>
-                PTA Student Job Hub was created to give Idaho faculty a straightforward
-                way to post meaningful opportunities that match PTA student learning
-                milestones, from initial clinical exposure to first career placements.
+                The Student Job Hub was created to give Idaho faculty a direct way to
+                post helpful opportunities that align with student career paths and
+                learning milestones—from early coursework and internships to first
+                career placements across every program we support.
               </p>
               <div class="pill-wrap">
                 <span class="pill">Instructor Managed</span>
@@ -97,8 +98,8 @@
               <div class="step-number">1</div>
               <h3>Professors Curate Opportunities</h3>
               <p>
-                Faculty members share high-quality openings from trusted Idaho clinics,
-                hospitals, outpatient centers, and rehab facilities.
+                Faculty members share high-quality openings from trusted Idaho employers,
+                including clinics, firms, agencies, and campus partners.
               </p>
             </article>
             <article class="step reveal reveal-delay-2">
@@ -113,21 +114,21 @@
               <div class="step-number">3</div>
               <h3>Students Discover and Apply</h3>
               <p>
-                Idaho PTA students browse opportunities quickly and act with confidence
-                because job information is clear and consistently formatted.
+                Idaho students browse by job type and act with confidence because job
+                information is clear and consistently formatted.
               </p>
             </article>
           </div>
         </section>
 
         <section class="section">
-          <h2 class="section-title reveal reveal-delay-1">PTA-Centered Priorities</h2>
+          <h2 class="section-title reveal reveal-delay-1">Student-Centered Priorities</h2>
           <div class="grid cols-3">
             <article class="card reveal reveal-delay-1">
-              <h3>Clinical Relevance</h3>
+              <h3>Career Relevance</h3>
               <p>
-                Listings emphasize settings and responsibilities that match PTA training
-                and competencies.
+                Listings highlight settings and responsibilities that match each
+                student’s field of study and career goals.
               </p>
             </article>
             <article class="card reveal reveal-delay-2">
@@ -151,7 +152,7 @@
 
     <footer class="footer">
       <div class="container">
-        <small>PTA Student Job Hub | <span data-year></span></small>
+        <small>Student Job Hub | <span data-year></span></small>
       </div>
     </footer>
 
@@ -222,7 +223,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/app-config.js?v=20260534"></script>
-    <script src="/script.js?v=20260534"></script>
+    <script src="/app-config.js?v=20260713"></script>
+    <script src="/script.js?v=20260713"></script>
   </body>
 </html>

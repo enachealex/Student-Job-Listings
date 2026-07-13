@@ -12,13 +12,13 @@
       href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260534" />
+    <link rel="stylesheet" href="/styles.css?v=20260713" />
   </head>
   <body data-page="profile">
     <header class="site-header">
       <div class="container header-inner">
         <a class="brand" href="/" aria-label="PTA Student Job Hub home">
-          <span class="brand-mark">PT</span>
+          <img class="brand-mark" src="/assets/jump-vault-logo.png" alt="The Jump Vault" width="38" height="38" />
           <span>PTA Student Job Hub</span>
         </a>
         <nav class="nav-links" aria-label="Main navigation">
@@ -46,9 +46,9 @@
               >
                 Dark Mode
               </button>
-              <p class="settings-user" id="settingsUserStatus">User: Not signed in</p>
+              <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
-              <a class="settings-link hidden" id="profileButton" href="/profile">Profile</a>
+              <a class="settings-link hidden" id="profileButton" href="/profile">User</a>
               <a class="settings-link hidden" id="manageUsersButton" href="/admin-users">Manage Users</a>
             </div>
           </div>
@@ -155,7 +155,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/app-config.js?v=20260534"></script>
-    <script src="/script.js?v=20260534"></script>
+    <script src="/app-config.js?v=20260713"></script>
+    <script src="/script.js?v=20260713"></script>
   </body>
 </html>

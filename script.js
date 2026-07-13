@@ -23,6 +23,7 @@ const teacherAuthState = {
   isAuthenticated: false,
   isAdmin: false,
   mustChangePassword: false,
+  isLocalDevAuth: false,
   supabase: null,
   listeners: [],
 };
@@ -30,6 +31,28 @@ const teacherAuthState = {
 function getAdminEmail() {
   const configuredAdmin = (globalThis.APP_CONFIG?.adminEmail || '').trim().toLowerCase();
   return configuredAdmin || 'lazyboy64@yahoo.com';
+}
+
+function isLocalDevHost() {
+  const host = (globalThis.location?.hostname || '').toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+}
+
+function createLocalDevSession() {
+  const email = getAdminEmail();
+  return {
+    access_token: 'local-dev-token',
+    token_type: 'bearer',
+    user: {
+      id: 'local-dev-user',
+      email,
+      user_metadata: {
+        first_name: 'Local',
+        last_name: 'Dev',
+        can_manage_users: true,
+      },
+    },
+  };
 }
 
 function getPathname() {
@@ -111,6 +134,7 @@ async function initTeacherAuth() {
     teacherAuthState.isAuthenticated = false;
     teacherAuthState.isAdmin = false;
     teacherAuthState.mustChangePassword = false;
+    teacherAuthState.isLocalDevAuth = false;
     notifyTeacherAuthChange();
   }
 
@@ -127,35 +151,61 @@ async function initTeacherAuth() {
       return;
     }
 
+    const isSignedIn = Boolean(teacherAuthState.isAuthenticated && teacherAuthState.session);
+
     if (profileButton) {
-      profileButton.classList.toggle('hidden', !teacherAuthState.isAuthenticated);
+      profileButton.classList.toggle('hidden', !isSignedIn);
     }
     if (manageUsersButton) {
       manageUsersButton.classList.toggle('hidden',
         !teacherAuthState.isAdmin && !teacherAuthState.session?.user?.user_metadata?.can_manage_users);
     }
 
+    if (settingsUserStatus) {
+      const showStatus = Boolean(statusMessage);
+      settingsUserStatus.hidden = !showStatus;
+      settingsUserStatus.classList.toggle('hidden', !showStatus);
+      settingsUserStatus.textContent = statusMessage || '';
+    }
+
     if (!teacherAuthState.configured) {
-      settingsUserStatus.textContent = statusMessage || 'Sign-in setup in progress';
       authActionButton.textContent = 'Sign In';
       authActionButton.disabled = false;
       notifyTeacherAuthChange();
       return;
     }
 
-    const userEmail = teacherAuthState.session?.user?.email || '';
     if (!teacherAuthState.session) {
-      settingsUserStatus.textContent = statusMessage || 'User: Not signed in';
       authActionButton.textContent = 'Sign In';
       authActionButton.disabled = false;
       notifyTeacherAuthChange();
       return;
     }
 
-    settingsUserStatus.textContent = statusMessage || `Signed in: ${userEmail}`;
     authActionButton.textContent = 'Sign Out';
     authActionButton.disabled = false;
     notifyTeacherAuthChange();
+  };
+
+  const applyLocalDevAuth = () => {
+    if (!isLocalDevHost()) {
+      return false;
+    }
+
+    teacherAuthState.isLocalDevAuth = true;
+    teacherAuthState.configured = true;
+    teacherAuthState.session = createLocalDevSession();
+    teacherAuthState.isAuthenticated = true;
+    teacherAuthState.isAdmin = true;
+    teacherAuthState.mustChangePassword = false;
+    teacherAuthState.loading = false;
+    updateSettingsAuthUi();
+
+    if (isLoginPage()) {
+      globalThis.location.href = '/jobs';
+    }
+
+    return true;
   };
 
   // Apply a session snapshot to global auth state and handle page redirects.
@@ -164,6 +214,18 @@ async function initTeacherAuth() {
   // inside onAuthStateChange — doing so deadlocks the Supabase JS client because
   // it holds an internal lock during auth state change events.
   const applySession = (session, allowRedirect = false) => {
+    if (session) {
+      teacherAuthState.isLocalDevAuth = false;
+    } else if (teacherAuthState.isLocalDevAuth && isLocalDevHost()) {
+      teacherAuthState.session = createLocalDevSession();
+      teacherAuthState.isAuthenticated = true;
+      teacherAuthState.isAdmin = true;
+      teacherAuthState.mustChangePassword = false;
+      teacherAuthState.loading = false;
+      updateSettingsAuthUi();
+      return;
+    }
+
     teacherAuthState.session = session || null;
     teacherAuthState.isAuthenticated = Boolean(session);
     const userEmail = (session?.user?.email || '').toLowerCase();
@@ -194,23 +256,35 @@ async function initTeacherAuth() {
 
   if (hasSettingsUi) {
     authActionButton.addEventListener('click', async () => {
-      if (!teacherAuthState.configured || !teacherAuthState.supabase) {
-        closeOpenSettingsMenus();
-        globalThis.location.href = '/login';
-        return;
-      }
-
-      authActionButton.disabled = true;
-
       if (teacherAuthState.session) {
+        authActionButton.disabled = true;
+
+        if (teacherAuthState.isLocalDevAuth || !teacherAuthState.supabase) {
+          teacherAuthState.isLocalDevAuth = false;
+          teacherAuthState.session = null;
+          teacherAuthState.isAuthenticated = false;
+          teacherAuthState.isAdmin = false;
+          teacherAuthState.mustChangePassword = false;
+          authActionButton.disabled = false;
+          updateSettingsAuthUi();
+          closeOpenSettingsMenus();
+          return;
+        }
+
         await teacherAuthState.supabase.auth.signOut();
         teacherAuthState.session = null;
         teacherAuthState.isAuthenticated = false;
         teacherAuthState.isAdmin = false;
         teacherAuthState.mustChangePassword = false;
         authActionButton.disabled = false;
-        updateSettingsAuthUi('Signed out');
+        updateSettingsAuthUi();
         closeOpenSettingsMenus();
+        return;
+      }
+
+      if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+        closeOpenSettingsMenus();
+        globalThis.location.href = '/login';
         return;
       }
 
@@ -220,7 +294,7 @@ async function initTeacherAuth() {
     });
   }
 
-  if (teacherAuthState.configured) {
+  if (teacherAuthState.supabase) {
     let initialLoadDone = false;
 
     // Use the session passed directly by the SDK — never call getSession() here.
@@ -233,16 +307,28 @@ async function initTeacherAuth() {
 
     // Initial load: safe to call getSession() here since we are outside the lock.
     teacherAuthState.loading = true;
-    if (hasSettingsUi) updateSettingsAuthUi('Checking session...');
+    if (hasSettingsUi) updateSettingsAuthUi();
     teacherAuthState.supabase.auth.getSession().then(({ data, error }) => {
       initialLoadDone = true;
       if (error) {
         teacherAuthState.loading = false;
-        updateSettingsAuthUi('Unable to verify session');
+        if (!applyLocalDevAuth()) {
+          updateSettingsAuthUi();
+        }
         return;
       }
-      applySession(data.session || null, true);
+
+      if (data.session) {
+        applySession(data.session, true);
+        return;
+      }
+
+      if (!applyLocalDevAuth()) {
+        applySession(null, true);
+      }
     });
+  } else if (isLocalDevHost()) {
+    applyLocalDevAuth();
   }
 }
 
@@ -1169,6 +1255,7 @@ function initJobsModal() {
   const templateCitySelect = document.getElementById('city');
   const detailsCloseBtn = document.getElementById('closeJobDetails');
   const editJobDetailsBtn = document.getElementById('editJobDetails');
+  const deleteJobDetailsBtn = document.getElementById('deleteJobDetails');
   const detailsOverlay = detailsModal ? detailsModal.querySelector('.modal-overlay') : null;
   const detailsType = document.getElementById('detailsType');
   const detailsOrganization = document.getElementById('detailsOrganization');
@@ -1190,6 +1277,66 @@ function initJobsModal() {
   let canManageJobs = false;
   let jobsCache = [];
   let hasLoadedRemoteJobs = false;
+  let activeCategory = 'pta';
+
+  const jobCategoryMeta = {
+    pta: {
+      label: 'Physical Therapy Assistant',
+      eyebrow: 'PTA Jobs Board',
+      title: 'Opportunities for Physical Therapy Assistant Students',
+      panelTitle: 'Graduating Soon?',
+      panelBody:
+        'Explore Idaho PTA openings from faculty posted links and detailed listings built for college students preparing to enter practice.',
+      subtitle: 'These opportunities are for Physical Therapist Assistants searching for jobs.',
+      empty: 'No Physical Therapy Assistant listings yet.',
+      urlRolePlaceholder: 'PTA Rehab Technician',
+      urlOrgPlaceholder: 'Clinic or Healthcare Organization',
+      urlPlaceholder: 'https://exampleclinic.com/careers/pta-role',
+      rolePlaceholder: 'PTA Student Assistant',
+      orgPlaceholder: 'Organization name',
+      descriptionPlaceholder: 'Describe duties, required skills, and ideal student profile.',
+    },
+    'civil-engineering': {
+      label: 'Civil Engineering',
+      eyebrow: 'Civil Engineering Jobs Board',
+      title: 'Opportunities for Civil Engineering Students',
+      panelTitle: 'Graduating Soon or Exploring Careers?',
+      panelBody:
+        'Explore Idaho Civil Engineering job openings from faculty posted links and detailed listings built for college students that are preparing to enter the field.',
+      subtitle: 'These opportunities are for Civil Engineering students searching for jobs.',
+      empty: 'No Civil Engineering listings yet.',
+      urlRolePlaceholder: 'Civil Engineering Intern',
+      urlOrgPlaceholder: 'Engineering Firm or Agency',
+      urlPlaceholder: 'https://examplefirm.com/careers/civil-engineering-intern',
+      rolePlaceholder: 'Civil Engineering Student Assistant',
+      orgPlaceholder: 'Organization name',
+      descriptionPlaceholder: 'Describe duties, required skills, and ideal student profile.',
+    },
+  };
+
+  const jobTypeTabs = Array.from(document.querySelectorAll('.jobs-type-link'));
+  const listingsSubtitle = document.getElementById('listingsSubtitle');
+  const jobsHeroEyebrow = document.getElementById('jobsHeroEyebrow');
+  const jobsHeroTitle = document.getElementById('jobsHeroTitle');
+  const jobsHeroPanelTitle = document.getElementById('jobsHeroPanelTitle');
+  const jobsHeroPanelBody = document.getElementById('jobsHeroPanelBody');
+  const listingJobTypeSelect = document.getElementById('listingJobType');
+  const listingJobTypeNote = document.getElementById('listingJobTypeNote');
+  const listingJobTypeTemplateSelect = document.getElementById('listingJobTypeTemplate');
+  const listingJobTypeTemplateNote = document.getElementById('listingJobTypeTemplateNote');
+  const jobsSearchInput = document.getElementById('jobsSearch');
+  const jobsFilterType = document.getElementById('jobsFilterType');
+  const jobsFilterState = document.getElementById('jobsFilterState');
+  const jobsFilterCity = document.getElementById('jobsFilterCity');
+  const jobsSortSelect = document.getElementById('jobsSort');
+  const jobsClearFiltersBtn = document.getElementById('jobsClearFilters');
+  const jobsResultCount = document.getElementById('jobsResultCount');
+  const urlRoleTitleInput = document.getElementById('urlRoleTitle');
+  const urlOrganizationInput = document.getElementById('urlOrganization');
+  const jobUrlInput = document.getElementById('jobUrl');
+  const roleInput = document.getElementById('role');
+  const organizationInput = document.getElementById('organization');
+  const descriptionInput = document.getElementById('description');
 
   const stateCityOptions = {
     ID: ['Aberdeen', 'Acequia', 'Albion', 'American Falls', 'Ammon', 'Arco', 'Arimo', 'Ashton', 'Athol', 'Bancroft', 'Basalt', 'Bellevue', 'Blackfoot', 'Bliss', 'Bloomington', 'Boise', 'Bonners Ferry', 'Bovill', 'Buhl', 'Burley', 'Butte City', 'Caldwell', 'Cambridge', 'Carey', 'Cascade', 'Castleford', 'Challis', 'Chubbuck', 'Clark Fork', 'Clayton', 'Clifton', 'Coeur d\'Alene', 'Cottonwood', 'Council', 'Craigmont', 'Crouch', 'Culdesac', 'Dalton Gardens', 'Dayton', 'Deary', 'Declo', 'Dietrich', 'Donnelly', 'Dover', 'Downey', 'Driggs', 'Drummond', 'Dubois', 'Eagle', 'East Hope', 'Eden', 'Elk River', 'Emmett', 'Fairfield', 'Ferdinand', 'Fernan Lake Village', 'Filer', 'Firth', 'Franklin', 'Fruitland', 'Garden City', 'Genesee', 'Georgetown', 'Glenns Ferry', 'Gooding', 'Grace', 'Grand View', 'Grangeville', 'Greenleaf', 'Hagerman', 'Hailey', 'Hansen', 'Harrison', 'Hauser', 'Hayden', 'Hayden Lake', 'Hazelton', 'Heyburn', 'Hollister', 'Homedale', 'Hope', 'Horseshoe Bend', 'Huetter', 'Idaho City', 'Idaho Falls', 'Inkom', 'Iona', 'Irwin', 'Island Park', 'Jerome', 'Juliaetta', 'Kamiah', 'Kellogg', 'Kendrick', 'Ketchum', 'Kimberly', 'Kooskia', 'Kootenai', 'Kuna', 'Lapwai', 'Lava Hot Springs', 'Leadore', 'Lewiston', 'Lewisville', 'Lost River', 'Mackay', 'Malad City', 'Malta', 'Marsing', 'McCall', 'McCammon', 'Melba', 'Menan', 'Meridian', 'Midvale', 'Middleton', 'Minidoka', 'Montpelier', 'Moore', 'Moscow', 'Mountain Home', 'Moyie Springs', 'Mud Lake', 'Mullan', 'Murtaugh', 'Nampa', 'Nezperce', 'New Meadows', 'New Plymouth', 'Newdale', 'Notus', 'Oakley', 'Oldtown', 'Onaway', 'Orofino', 'Osburn', 'Oxford', 'Paris', 'Parma', 'Paul', 'Payette', 'Peck', 'Pierce', 'Pinehurst', 'Placerville', 'Plummer', 'Pocatello', 'Ponderay', 'Post Falls', 'Potlatch', 'Preston', 'Priest River', 'Rathdrum', 'Reubens', 'Rexburg', 'Richfield', 'Rigby', 'Riggins', 'Ririe', 'Roberts', 'Rockland', 'Rupert', 'St. Anthony', 'St. Charles', 'St. Maries', 'Salmon', 'Sandpoint', 'Shelley', 'Shoshone', 'Smelterville', 'Soda Springs', 'Spirit Lake', 'Spencer', 'Stanley', 'Star', 'State Line', 'Stites', 'Sugar City', 'Sun Valley', 'Swan Valley', 'Tensed', 'Tetonia', 'Teton', 'Troy', 'Twin Falls', 'Ucon', 'Victor', 'Wallace', 'Warm River', 'Weippe', 'Weiser', 'Wendell', 'Weston', 'White Bird', 'Wilder', 'Winchester', 'Worley'],
@@ -1258,6 +1405,7 @@ function initJobsModal() {
       state: job.state || parsedLocation.state || '',
       city: job.city || parsedLocation.city || '',
       type: job.type || 'Listing',
+      category: jobCategoryMeta[job.category] ? job.category : 'pta',
       details: job.details || 'No additional details provided.',
       sourceLabel: job.sourceLabel || 'listing',
       postingUrl: job.postingUrl || '',
@@ -1346,6 +1494,7 @@ function initJobsModal() {
       state: row.state,
       city: row.city,
       type: row.type,
+      category: row.category,
       details: row.details,
       sourceLabel: row.source_label,
       postingUrl: row.posting_url,
@@ -1365,6 +1514,7 @@ function initJobsModal() {
       state: job.state,
       city: job.city,
       type: job.type,
+      category: job.category,
       details: job.details,
       source_label: job.sourceLabel,
       posting_url: job.postingUrl || '',
@@ -1404,6 +1554,19 @@ function initJobsModal() {
       .upsert(mapJobToDbRow(job), { onConflict: 'id' });
   };
 
+  const deleteRemoteJob = async (jobId) => {
+    if (!teacherAuthState.configured || !teacherAuthState.supabase) {
+      return {
+        error: new Error('Teacher backend is not configured.'),
+      };
+    }
+
+    return teacherAuthState.supabase
+      .from('jobs')
+      .delete()
+      .eq('id', jobId);
+  };
+
   const decorateJobCard = (item, jobData) => {
     item.classList.add('clickable');
     item.setAttribute('role', 'button');
@@ -1418,6 +1581,7 @@ function initJobsModal() {
     item.dataset.state = jobData.state || '';
     item.dataset.city = jobData.city || '';
     item.dataset.type = jobData.type;
+    item.dataset.category = jobData.category;
     item.dataset.details = jobData.details;
     item.dataset.sourceLabel = jobData.sourceLabel;
     item.dataset.postingUrl = jobData.postingUrl || '';
@@ -1458,6 +1622,7 @@ function initJobsModal() {
       state: item.dataset.state || parsedLocation.state,
       city: item.dataset.city || parsedLocation.city,
       type,
+      category: item.dataset.category || 'pta',
       details,
       sourceLabel,
       postingUrl,
@@ -1479,6 +1644,10 @@ function initJobsModal() {
   };
 
   const syncRemoteJobs = async () => {
+    if (teacherAuthState.isLocalDevAuth) {
+      return;
+    }
+
     const remoteJobs = await fetchRemoteJobs();
     if (remoteJobs == null) {
       return;
@@ -1487,7 +1656,7 @@ function initJobsModal() {
     jobsCache = remoteJobs;
     saveStoredJobs(remoteJobs);
     hasLoadedRemoteJobs = true;
-    renderJobs();
+    renderJobs({ refreshLocations: true });
   };
 
   const getJobs = () => {
@@ -1596,18 +1765,313 @@ function initJobsModal() {
     return item;
   };
 
-  const renderJobs = () => {
-    const jobs = getJobs();
+  const applyCategoryPlaceholders = (category) => {
+    const meta = jobCategoryMeta[category] || jobCategoryMeta.pta;
+
+    if (urlRoleTitleInput) {
+      urlRoleTitleInput.placeholder = meta.urlRolePlaceholder;
+    }
+    if (urlOrganizationInput) {
+      urlOrganizationInput.placeholder = meta.urlOrgPlaceholder;
+    }
+    if (jobUrlInput) {
+      jobUrlInput.placeholder = meta.urlPlaceholder;
+    }
+    if (roleInput) {
+      roleInput.placeholder = meta.rolePlaceholder;
+    }
+    if (organizationInput) {
+      organizationInput.placeholder = meta.orgPlaceholder;
+    }
+    if (descriptionInput) {
+      descriptionInput.placeholder = meta.descriptionPlaceholder;
+    }
+  };
+
+  const applyCategoryCopy = (category) => {
+    const meta = jobCategoryMeta[category] || jobCategoryMeta.pta;
+
+    if (jobsHeroEyebrow) {
+      jobsHeroEyebrow.textContent = meta.eyebrow;
+    }
+    if (jobsHeroTitle) {
+      jobsHeroTitle.textContent = meta.title;
+    }
+    if (jobsHeroPanelTitle) {
+      jobsHeroPanelTitle.textContent = meta.panelTitle;
+    }
+    if (jobsHeroPanelBody) {
+      jobsHeroPanelBody.textContent = meta.panelBody;
+    }
+    if (listingsSubtitle) {
+      listingsSubtitle.textContent = meta.subtitle;
+    }
+
+    applyCategoryPlaceholders(category);
+  };
+
+  const syncListingJobTypeNote = (category) => {
+    const meta = jobCategoryMeta[category] || jobCategoryMeta.pta;
+    const noteText = `This listing will appear under ${meta.label}.`;
+
+    if (listingJobTypeNote) {
+      listingJobTypeNote.textContent = noteText;
+    }
+    if (listingJobTypeTemplateNote) {
+      listingJobTypeTemplateNote.textContent = noteText;
+    }
+  };
+
+  const setListingJobType = (category) => {
+    const nextCategory = jobCategoryMeta[category] ? category : 'pta';
+    if (listingJobTypeSelect) {
+      listingJobTypeSelect.value = nextCategory;
+    }
+    if (listingJobTypeTemplateSelect) {
+      listingJobTypeTemplateSelect.value = nextCategory;
+    }
+    syncListingJobTypeNote(nextCategory);
+    applyCategoryPlaceholders(nextCategory);
+  };
+
+  const getSelectedListingCategory = () => {
+    const activePanel = modal.querySelector('.tab-panel.active');
+    const usingTemplate = activePanel?.id === 'templatePanel';
+    const selected = usingTemplate
+      ? listingJobTypeTemplateSelect?.value
+      : listingJobTypeSelect?.value;
+    return jobCategoryMeta[selected] ? selected : activeCategory;
+  };
+
+  const getCategoryJobs = () => {
+    return getJobs().filter((job) => job.category === activeCategory);
+  };
+
+  const getJobSortTimestamp = (job) => {
+    const match = String(job.id || '').match(/job-(\d+)/);
+    return match ? Number(match[1]) : 0;
+  };
+
+  const getJobPayValue = (job) => {
+    if (job.pay === '' || job.pay == null) {
+      return null;
+    }
+
+    const value = Number(job.pay);
+    return Number.isNaN(value) ? null : value;
+  };
+
+  const refreshLocationFilters = () => {
+    if (!jobsFilterState || !jobsFilterCity) {
+      return;
+    }
+
+    const categoryJobs = getCategoryJobs();
+    const selectedState = jobsFilterState.value;
+    const selectedCity = jobsFilterCity.value;
+    const states = [...new Set(categoryJobs.map((job) => job.state).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+    jobsFilterState.innerHTML = '<option value="">All states</option>';
+    states.forEach((state) => {
+      const option = document.createElement('option');
+      option.value = state;
+      option.textContent = state;
+      jobsFilterState.append(option);
+    });
+
+    jobsFilterState.value = states.includes(selectedState) ? selectedState : '';
+
+    const cities = [...new Set(
+      categoryJobs
+        .filter((job) => !jobsFilterState.value || job.state === jobsFilterState.value)
+        .map((job) => job.city)
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    jobsFilterCity.innerHTML = '<option value="">All cities</option>';
+    cities.forEach((city) => {
+      const option = document.createElement('option');
+      option.value = city;
+      option.textContent = city;
+      jobsFilterCity.append(option);
+    });
+
+    jobsFilterCity.value = cities.includes(selectedCity) ? selectedCity : '';
+  };
+
+  const getFilteredSortedJobs = () => {
+    const search = (jobsSearchInput?.value || '').trim().toLowerCase();
+    const typeFilter = jobsFilterType?.value || '';
+    const stateFilter = jobsFilterState?.value || '';
+    const cityFilter = jobsFilterCity?.value || '';
+    const sortBy = jobsSortSelect?.value || 'newest';
+
+    let jobs = getCategoryJobs().filter((job) => {
+      if (typeFilter && job.type !== typeFilter) {
+        return false;
+      }
+      if (stateFilter && job.state !== stateFilter) {
+        return false;
+      }
+      if (cityFilter && job.city !== cityFilter) {
+        return false;
+      }
+      if (!search) {
+        return true;
+      }
+
+      const haystack = [
+        job.role,
+        job.organization,
+        job.location,
+        job.details,
+        job.type,
+        job.sourceLabel,
+      ].join(' ').toLowerCase();
+
+      return haystack.includes(search);
+    });
+
+    const compareText = (left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' });
+
+    jobs = [...jobs].sort((left, right) => {
+      if (sortBy === 'role-asc') {
+        return compareText(left.role, right.role);
+      }
+      if (sortBy === 'role-desc') {
+        return compareText(right.role, left.role);
+      }
+      if (sortBy === 'org-asc') {
+        return compareText(left.organization, right.organization);
+      }
+      if (sortBy === 'location-asc') {
+        return compareText(left.location, right.location);
+      }
+      if (sortBy === 'pay-asc' || sortBy === 'pay-desc') {
+        const leftPay = getJobPayValue(left);
+        const rightPay = getJobPayValue(right);
+        if (leftPay == null && rightPay == null) {
+          return 0;
+        }
+        if (leftPay == null) {
+          return 1;
+        }
+        if (rightPay == null) {
+          return -1;
+        }
+        return sortBy === 'pay-asc' ? leftPay - rightPay : rightPay - leftPay;
+      }
+
+      return getJobSortTimestamp(right) - getJobSortTimestamp(left);
+    });
+
+    return jobs;
+  };
+
+  const updateJobsResultCount = (shown, total) => {
+    if (!jobsResultCount) {
+      return;
+    }
+
+    if (total === 0) {
+      jobsResultCount.textContent = 'No listings in this job type yet.';
+      return;
+    }
+
+    if (shown === total) {
+      jobsResultCount.textContent = `Showing ${shown} listing${shown === 1 ? '' : 's'}.`;
+      return;
+    }
+
+    jobsResultCount.textContent = `Showing ${shown} of ${total} listing${total === 1 ? '' : 's'}.`;
+  };
+
+  const clearJobFilters = () => {
+    if (jobsSearchInput) {
+      jobsSearchInput.value = '';
+    }
+    if (jobsFilterType) {
+      jobsFilterType.value = '';
+    }
+    if (jobsFilterState) {
+      jobsFilterState.value = '';
+    }
+    if (jobsFilterCity) {
+      jobsFilterCity.value = '';
+    }
+    if (jobsSortSelect) {
+      jobsSortSelect.value = 'newest';
+    }
+    renderJobs({ refreshLocations: true });
+  };
+
+  const renderJobs = ({ refreshLocations = false } = {}) => {
+    const meta = jobCategoryMeta[activeCategory] || jobCategoryMeta.pta;
+    const categoryJobs = getCategoryJobs();
+
+    if (refreshLocations) {
+      refreshLocationFilters();
+    }
+
+    const jobs = getFilteredSortedJobs();
+
     jobsList.innerHTML = '';
+    updateJobsResultCount(jobs.length, categoryJobs.length);
+
+    if (categoryJobs.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'jobs-empty';
+      empty.textContent = meta.empty;
+      jobsList.append(empty);
+      return;
+    }
+
+    if (jobs.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'jobs-empty';
+      empty.textContent = 'No listings match your current filters.';
+      jobsList.append(empty);
+      return;
+    }
+
     jobs.forEach((job) => {
       jobsList.append(renderJobCard(job));
     });
   };
 
+  const setActiveJobCategory = (category) => {
+    if (!jobCategoryMeta[category]) {
+      return;
+    }
+
+    activeCategory = category;
+
+    jobTypeTabs.forEach((tab) => {
+      const isActive = tab.dataset.category === category;
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      tab.classList.toggle('jobs-type-link-active', isActive);
+    });
+
+    const activeTab = jobTypeTabs.find((tab) => tab.dataset.category === category);
+    if (activeTab) {
+      jobsList.setAttribute('aria-labelledby', activeTab.id);
+    }
+
+    applyCategoryCopy(category);
+    renderJobs({ refreshLocations: true });
+  };
+
+  const getCategoryForSave = () => {
+    return getSelectedListingCategory();
+  };
+
   const upsertJob = async (job) => {
     const normalizedJob = normalizeJob(job);
+    const useRemote = teacherAuthState.configured
+      && teacherAuthState.supabase
+      && !teacherAuthState.isLocalDevAuth;
 
-    if (teacherAuthState.configured && teacherAuthState.supabase) {
+    if (useRemote) {
       const { error } = await persistRemoteJob(normalizedJob);
       if (error) {
         throw error;
@@ -1623,8 +2087,32 @@ function initJobsModal() {
 
     jobsCache = updatedJobs;
     saveStoredJobs(updatedJobs);
-    renderJobs();
+    renderJobs({ refreshLocations: true });
     return normalizedJob;
+  };
+
+  const deleteJob = async (jobId) => {
+    if (!jobId) {
+      throw new Error('Missing job id.');
+    }
+
+    const useRemote = teacherAuthState.configured
+      && teacherAuthState.supabase
+      && !teacherAuthState.isLocalDevAuth;
+
+    if (useRemote) {
+      const { error } = await deleteRemoteJob(jobId);
+      if (error) {
+        throw error;
+      }
+
+      await syncRemoteJobs();
+      return;
+    }
+
+    jobsCache = jobsCache.filter((job) => job.id !== jobId);
+    saveStoredJobs(jobsCache);
+    renderJobs({ refreshLocations: true });
   };
 
   const populateUrlForm = (job) => {
@@ -1729,6 +2217,7 @@ function initJobsModal() {
 
     editingJobId = null;
     resetJobForms();
+    setListingJobType(activeCategory);
     setUploadMode({ entryMode: 'url', isEditing: false });
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
@@ -1754,6 +2243,7 @@ function initJobsModal() {
     editingJobId = job.id;
     closeDetailsModal();
     resetJobForms();
+    setListingJobType(job.category || activeCategory);
     setUploadMode({ entryMode: job.entryMode, isEditing: true });
 
     if (job.entryMode === 'url') {
@@ -1825,6 +2315,11 @@ function initJobsModal() {
       editJobDetailsBtn.disabled = !canManageJobs;
     }
 
+    if (deleteJobDetailsBtn) {
+      deleteJobDetailsBtn.hidden = !canManageJobs;
+      deleteJobDetailsBtn.disabled = !canManageJobs;
+    }
+
     if (!teacherAccessNotice) {
       return;
     }
@@ -1837,7 +2332,9 @@ function initJobsModal() {
     }
 
     if (canManageJobs) {
-      teacherAccessNotice.textContent = 'You are signed in. Posting and editing are enabled.';
+      teacherAccessNotice.textContent = teacherAuthState.isLocalDevAuth
+        ? 'Local testing mode: posting and editing are enabled.'
+        : 'You are signed in. Posting and editing are enabled.';
       return;
     }
 
@@ -1845,9 +2342,84 @@ function initJobsModal() {
   };
 
   initializeJobs();
-  renderJobs();
+  setActiveJobCategory(activeCategory);
   attachLocationDropdownBehavior(urlStateSelect, urlCitySelect);
   attachLocationDropdownBehavior(templateStateSelect, templateCitySelect);
+
+  jobTypeTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      setActiveJobCategory(tab.dataset.category);
+    });
+  });
+
+  if (jobsSearchInput) {
+    jobsSearchInput.addEventListener('input', () => {
+      renderJobs();
+    });
+  }
+
+  const jobsToolbar = document.getElementById('jobsToolbar');
+  if (jobsToolbar) {
+    jobsToolbar.addEventListener('submit', (event) => {
+      event.preventDefault();
+    });
+  }
+
+  [jobsFilterType, jobsSortSelect].forEach((control) => {
+    if (!control) {
+      return;
+    }
+    control.addEventListener('change', () => {
+      renderJobs();
+    });
+  });
+
+  if (jobsFilterState) {
+    jobsFilterState.addEventListener('change', () => {
+      if (jobsFilterCity) {
+        jobsFilterCity.value = '';
+      }
+      renderJobs({ refreshLocations: true });
+    });
+  }
+
+  if (jobsFilterCity) {
+    jobsFilterCity.addEventListener('change', () => {
+      renderJobs();
+    });
+  }
+
+  if (jobsClearFiltersBtn) {
+    jobsClearFiltersBtn.addEventListener('click', () => {
+      clearJobFilters();
+    });
+  }
+
+  if (listingJobTypeSelect) {
+    listingJobTypeSelect.addEventListener('change', () => {
+      const selectedCategory = jobCategoryMeta[listingJobTypeSelect.value]
+        ? listingJobTypeSelect.value
+        : activeCategory;
+      if (listingJobTypeTemplateSelect) {
+        listingJobTypeTemplateSelect.value = selectedCategory;
+      }
+      syncListingJobTypeNote(selectedCategory);
+      applyCategoryPlaceholders(selectedCategory);
+    });
+  }
+
+  if (listingJobTypeTemplateSelect) {
+    listingJobTypeTemplateSelect.addEventListener('change', () => {
+      const selectedCategory = jobCategoryMeta[listingJobTypeTemplateSelect.value]
+        ? listingJobTypeTemplateSelect.value
+        : activeCategory;
+      if (listingJobTypeSelect) {
+        listingJobTypeSelect.value = selectedCategory;
+      }
+      syncListingJobTypeNote(selectedCategory);
+      applyCategoryPlaceholders(selectedCategory);
+    });
+  }
 
   openBtn.addEventListener('click', openCreateModal);
   closeBtn.addEventListener('click', closeModal);
@@ -1862,6 +2434,33 @@ function initJobsModal() {
     editJobDetailsBtn.addEventListener('click', () => {
       if (currentDetailsJobId && canManageJobs) {
         startEditingJob(currentDetailsJobId);
+      }
+    });
+  }
+
+  if (deleteJobDetailsBtn) {
+    deleteJobDetailsBtn.addEventListener('click', async () => {
+      if (!currentDetailsJobId || !canManageJobs) {
+        return;
+      }
+
+      const job = findJobById(currentDetailsJobId);
+      const label = job ? `"${job.role}" at ${job.organization}` : 'this listing';
+      if (!globalThis.confirm(`Remove ${label}? This cannot be undone.`)) {
+        return;
+      }
+
+      deleteJobDetailsBtn.disabled = true;
+
+      try {
+        await deleteJob(currentDetailsJobId);
+        closeDetailsModal();
+      } catch {
+        globalThis.alert('Unable to remove this listing. Please try again.');
+      } finally {
+        if (deleteJobDetailsBtn) {
+          deleteJobDetailsBtn.disabled = !canManageJobs;
+        }
       }
     });
   }
@@ -2028,6 +2627,7 @@ function initJobsModal() {
         state,
         city,
         type: 'URL',
+        category: getCategoryForSave(),
         details: url,
         sourceLabel: 'URL upload',
         postingUrl: url,
@@ -2036,6 +2636,7 @@ function initJobsModal() {
         payBenefits: '',
       });
 
+      setActiveJobCategory(savedJob.category);
       closeModal();
       showFlash(editingJobId ? 'URL listing updated successfully.' : 'URL listing added successfully. You can publish another one.', 'ok');
       openDetailsModal(savedJob);
@@ -2077,6 +2678,7 @@ function initJobsModal() {
         state,
         city,
         type,
+        category: getCategoryForSave(),
         details,
         sourceLabel: 'template form',
         postingUrl: '',
@@ -2085,6 +2687,7 @@ function initJobsModal() {
         benefits: [...benefitItems],
       });
 
+      setActiveJobCategory(savedJob.category);
       closeModal();
       showFlash(editingJobId ? 'Listing updated successfully.' : 'Template listing created. It now appears in current listings.', 'ok');
       openDetailsModal(savedJob);
