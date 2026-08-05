@@ -17,7 +17,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260804q" />
+    <link rel="stylesheet" href="/styles.css?v=20260804y" />
   </head>
   <body data-page="jobs">
     <header class="site-header">
@@ -110,6 +110,17 @@
           <div class="jobs-type-header">
             <p class="jobs-type-section-label" id="jobTypesHeading">Job Types</p>
             <button
+              class="jobs-type-select-trigger"
+              id="jobsTypeSelectTrigger"
+              type="button"
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-controls="jobsTypeNav"
+            >
+              <span id="jobsTypeSelectLabel">Physical Therapy Assistant</span>
+              <span class="jobs-type-select-caret" aria-hidden="true"></span>
+            </button>
+            <button
               class="jobs-type-add-btn hidden"
               id="addJobTypeBtn"
               type="button"
@@ -117,17 +128,6 @@
               title="Add job type"
             ></button>
           </div>
-          <button
-            class="jobs-type-select-trigger"
-            id="jobsTypeSelectTrigger"
-            type="button"
-            aria-expanded="false"
-            aria-haspopup="listbox"
-            aria-controls="jobsTypeNav"
-          >
-            <span id="jobsTypeSelectLabel">Physical Therapy Assistant</span>
-            <span class="jobs-type-select-caret" aria-hidden="true"></span>
-          </button>
           <nav class="jobs-type-nav" id="jobsTypeNav" role="tablist" aria-labelledby="jobTypesHeading">
             <!-- Job type tabs rendered by script.js -->
           </nav>
