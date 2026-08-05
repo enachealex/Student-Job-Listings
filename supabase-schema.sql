@@ -14,13 +14,14 @@ create table if not exists public.jobs (
   state text not null,
   city text not null,
   type text not null,
-  category text not null default 'pta' check (category in ('pta', 'civil-engineering')),
+  category text not null default 'pta',
   details text not null,
   source_label text not null,
   posting_url text not null default '',
   phone text not null default '',
   pay numeric,
   benefits jsonb not null default '[]'::jsonb,
+  posted_by text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users(id)
@@ -31,10 +32,11 @@ alter table public.jobs
   add column if not exists category text not null default 'pta';
 
 alter table public.jobs
-  drop constraint if exists jobs_category_check;
+  add column if not exists posted_by text not null default '';
 
+-- Allow any job type slug (admins can add types from the Jobs UI).
 alter table public.jobs
-  add constraint jobs_category_check check (category in ('pta', 'civil-engineering'));
+  drop constraint if exists jobs_category_check;
 
 create or replace function public.touch_updated_at()
 returns trigger

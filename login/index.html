@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
+    <script>(function(){try{if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');var s=localStorage.getItem('studentJobHubSchoolTheme');document.documentElement.setAttribute('data-school',s==='uidaho'?'uidaho':'nic');}catch(e){}})();</script>
     <meta name="description" content="Secure sign-in for Student Job Hub." />
     <title>Student Job Hub | Sign In</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,7 +14,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260713d" />
+    <link rel="stylesheet" href="/styles.css?v=20260804q" />
   </head>
   <body data-page="login">
     <header class="site-header">
@@ -57,6 +57,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
     <script src="/app-config.js?v=20260713d"></script>
-    <script src="/script.js?v=20260713e"></script>
+    <script src="/script.js?v=20260804o"></script>
   </body>
 </html>

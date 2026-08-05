@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
+    <script>(function(){try{if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');var s=localStorage.getItem('studentJobHubSchoolTheme');document.documentElement.setAttribute('data-school',s==='uidaho'?'uidaho':'nic');}catch(e){}})();</script>
     <meta
       name="description"
       content="Post and browse Idaho student job listings for college students and faculty."
@@ -17,7 +17,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260713d" />
+    <link rel="stylesheet" href="/styles.css?v=20260804q" />
   </head>
   <body data-page="jobs">
     <header class="site-header">
@@ -26,7 +26,19 @@
           <img class="brand-mark" src="/assets/jump-vault-logo.png" alt="The Jump Vault" width="38" height="38" />
           <span>Student Job Hub</span>
         </a>
-        <nav class="nav-links" aria-label="Main navigation">
+                <button
+          class="nav-hamburger"
+          id="navHamburger"
+          type="button"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="mainNav"
+        >
+          <span class="nav-hamburger-line" aria-hidden="true"></span>
+          <span class="nav-hamburger-line" aria-hidden="true"></span>
+          <span class="nav-hamburger-line" aria-hidden="true"></span>
+        </button>
+        <nav class="nav-links" id="mainNav" aria-label="Main navigation">
           <a class="nav-link" data-page="home" href="/">Home</a>
           <a class="nav-link" data-page="about" href="/about">About</a>
           <a class="nav-link" data-page="jobs" href="/jobs">Jobs</a>
@@ -51,6 +63,37 @@
               >
                 Dark Mode
               </button>
+              <div class="settings-submenu">
+                <button
+                  class="settings-submenu-trigger"
+                  type="button"
+                  aria-expanded="false"
+                  aria-haspopup="true"
+                  aria-controls="schoolThemeOptions"
+                >
+                  Theme
+                </button>
+                <div class="settings-submenu-panel" id="schoolThemeOptions" role="menu">
+                  <button
+                    type="button"
+                    class="school-theme-option"
+                    role="menuitemradio"
+                    data-school="nic"
+                    aria-checked="true"
+                  >
+                    North Idaho College
+                  </button>
+                  <button
+                    type="button"
+                    class="school-theme-option"
+                    role="menuitemradio"
+                    data-school="uidaho"
+                    aria-checked="false"
+                  >
+                    University of Idaho
+                  </button>
+                </div>
+              </div>
               <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
               <button class="settings-link hidden" id="profileButton" type="button">User</button>
@@ -64,30 +107,29 @@
     <main>
       <div class="jobs-shell">
         <aside class="jobs-type-sidebar" aria-label="Job types">
-          <p class="jobs-type-section-label" id="jobTypesHeading">Job Types</p>
-          <nav class="jobs-type-nav" role="tablist" aria-labelledby="jobTypesHeading">
+          <div class="jobs-type-header">
+            <p class="jobs-type-section-label" id="jobTypesHeading">Job Types</p>
             <button
-              class="jobs-type-link jobs-type-link-active"
+              class="jobs-type-add-btn hidden"
+              id="addJobTypeBtn"
               type="button"
-              role="tab"
-              id="jobTypePta"
-              data-category="pta"
-              aria-selected="true"
-              aria-controls="jobsList"
-            >
-              Physical Therapy Assistant
-            </button>
-            <button
-              class="jobs-type-link"
-              type="button"
-              role="tab"
-              id="jobTypeCivil"
-              data-category="civil-engineering"
-              aria-selected="false"
-              aria-controls="jobsList"
-            >
-              Civil Engineering
-            </button>
+              aria-label="Add job type"
+              title="Add job type"
+            ></button>
+          </div>
+          <button
+            class="jobs-type-select-trigger"
+            id="jobsTypeSelectTrigger"
+            type="button"
+            aria-expanded="false"
+            aria-haspopup="listbox"
+            aria-controls="jobsTypeNav"
+          >
+            <span id="jobsTypeSelectLabel">Physical Therapy Assistant</span>
+            <span class="jobs-type-select-caret" aria-hidden="true"></span>
+          </button>
+          <nav class="jobs-type-nav" id="jobsTypeNav" role="tablist" aria-labelledby="jobTypesHeading">
+            <!-- Job type tabs rendered by script.js -->
           </nav>
         </aside>
 
@@ -146,62 +188,87 @@
 
             <section class="section">
               <section class="listings reveal reveal-delay-1" aria-labelledby="currentListingsTitle">
-                <h2 id="currentListingsTitle">Current Listings</h2>
-                <p class="section-subtitle" id="listingsSubtitle">
-                  These opportunities are for Physical Therapist Assistants searching for jobs.
-                </p>
+                <div class="listings-header">
+                  <div class="listings-header-copy">
+                    <h2 id="currentListingsTitle">Current Listings</h2>
+                    <p class="section-subtitle" id="listingsSubtitle">
+                      These opportunities are for Physical Therapist Assistants searching for jobs.
+                    </p>
+                  </div>
+                  <button
+                    class="btn btn-primary listings-post-btn hidden"
+                    id="postJobListingsBtn"
+                    type="button"
+                  >
+                    Post Job
+                  </button>
+                </div>
 
                 <form class="jobs-toolbar" id="jobsToolbar" aria-label="Sort and filter listings">
-                  <div class="jobs-toolbar-grid">
+                  <div class="jobs-toolbar-top">
                     <div class="field jobs-toolbar-search">
-                      <label for="jobsSearch">Search</label>
+                      <label class="visually-hidden" for="jobsSearch">Search</label>
                       <input
                         id="jobsSearch"
                         type="search"
-                        placeholder="Role, organization, or keywords"
+                        placeholder="Search role, organization, or keywords"
                         autocomplete="off"
                       />
                     </div>
-                    <div class="field">
-                      <label for="jobsFilterType">Employment Type</label>
-                      <select id="jobsFilterType">
-                        <option value="">All types</option>
-                        <option value="Part-Time">Part-Time</option>
-                        <option value="Full-Time">Full-Time</option>
-                        <option value="Clinical">Clinical</option>
-                        <option value="Internship">Internship</option>
-                        <option value="URL">URL</option>
-                      </select>
+                    <button
+                      class="btn btn-muted jobs-filters-toggle"
+                      id="jobsFiltersToggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="jobsFiltersPanel"
+                    >
+                      Filters
+                    </button>
+                  </div>
+                  <div class="jobs-toolbar-filters" id="jobsFiltersPanel" hidden>
+                    <div class="jobs-toolbar-grid">
+                      <div class="field">
+                        <label for="jobsFilterType">Employment Type</label>
+                        <select id="jobsFilterType">
+                          <option value="">All types</option>
+                          <option value="Part-Time">Part-Time</option>
+                          <option value="Full-Time">Full-Time</option>
+                          <option value="Clinical">Clinical</option>
+                          <option value="Internship">Internship</option>
+                          <option value="URL">URL</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label for="jobsFilterState">State</label>
+                        <select id="jobsFilterState">
+                          <option value="">All states</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label for="jobsFilterCity">City</label>
+                        <select id="jobsFilterCity">
+                          <option value="">All cities</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label for="jobsSort">Sort by</label>
+                        <select id="jobsSort">
+                          <option value="newest">Newest first</option>
+                          <option value="role-asc">Role A–Z</option>
+                          <option value="role-desc">Role Z–A</option>
+                          <option value="org-asc">Organization A–Z</option>
+                          <option value="location-asc">Location A–Z</option>
+                          <option value="pay-desc">Pay: high to low</option>
+                          <option value="pay-asc">Pay: low to high</option>
+                        </select>
+                      </div>
                     </div>
-                    <div class="field">
-                      <label for="jobsFilterState">State</label>
-                      <select id="jobsFilterState">
-                        <option value="">All states</option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <label for="jobsFilterCity">City</label>
-                      <select id="jobsFilterCity">
-                        <option value="">All cities</option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <label for="jobsSort">Sort by</label>
-                      <select id="jobsSort">
-                        <option value="newest">Newest first</option>
-                        <option value="role-asc">Role A–Z</option>
-                        <option value="role-desc">Role Z–A</option>
-                        <option value="org-asc">Organization A–Z</option>
-                        <option value="location-asc">Location A–Z</option>
-                        <option value="pay-desc">Pay: high to low</option>
-                        <option value="pay-asc">Pay: low to high</option>
-                      </select>
+                    <div class="jobs-toolbar-actions">
+                      <p class="jobs-result-count" id="jobsResultCount" aria-live="polite"></p>
+                      <button class="btn btn-muted" id="jobsClearFilters" type="button">Clear filters</button>
                     </div>
                   </div>
-                  <div class="jobs-toolbar-actions">
-                    <p class="jobs-result-count" id="jobsResultCount" aria-live="polite"></p>
-                    <button class="btn btn-muted" id="jobsClearFilters" type="button">Clear filters</button>
-                  </div>
+                  <p class="jobs-result-count jobs-result-count-inline" id="jobsResultCountInline" aria-live="polite"></p>
                 </form>
 
                 <ul class="jobs-list" id="jobsList" aria-live="polite" role="tabpanel" aria-labelledby="jobTypePta">
@@ -268,8 +335,6 @@
               <div class="field full">
                 <label for="listingJobType">Job Type</label>
                 <select id="listingJobType" name="listingJobType" required>
-                  <option value="pta">Physical Therapy Assistant</option>
-                  <option value="civil-engineering">Civil Engineering</option>
                 </select>
                 <p class="upload-job-type-note" id="listingJobTypeNote">
                   This listing will appear under the selected Job Type.
@@ -315,8 +380,6 @@
               <div class="field full">
                 <label for="listingJobTypeTemplate">Job Type</label>
                 <select id="listingJobTypeTemplate" name="listingJobTypeTemplate" required>
-                  <option value="pta">Physical Therapy Assistant</option>
-                  <option value="civil-engineering">Civil Engineering</option>
                 </select>
                 <p class="upload-job-type-note" id="listingJobTypeTemplateNote">
                   This listing will appear under the selected Job Type.
@@ -383,6 +446,37 @@
       </div>
     </dialog>
 
+    <dialog class="modal" id="addJobTypeModal" aria-hidden="true" aria-labelledby="addJobTypeHeading">
+      <div class="modal-overlay" data-close-add-job-type aria-hidden="true"></div>
+      <div class="modal-card modal-card-sm">
+        <div class="modal-top">
+          <h3 id="addJobTypeHeading">Add Job Type</h3>
+          <button class="close-btn" id="closeAddJobType" type="button" aria-label="Close add job type dialog">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <form id="addJobTypeForm" class="auth-form" style="padding: 0 1.15rem 1.2rem;">
+          <div class="field full">
+            <label for="newJobTypeName">Job Type Name</label>
+            <input
+              id="newJobTypeName"
+              name="newJobTypeName"
+              type="text"
+              placeholder="e.g. Nursing, Computer Science"
+              maxlength="80"
+              required
+              autocomplete="off"
+            />
+          </div>
+          <p class="auth-message" id="addJobTypeMessage" aria-live="polite"></p>
+          <div class="form-actions">
+            <button type="button" class="btn btn-muted" id="cancelAddJobType">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
     <dialog class="modal" id="jobDetailsModal" aria-hidden="true" aria-labelledby="jobDetailsHeading">
       <div class="modal-overlay" aria-hidden="true"></div>
       <div class="modal-card job-details-card">
@@ -417,6 +511,7 @@
               <ul class="details-benefits-list" id="detailsBenefitsList"></ul>
             </div>
             <p class="details-source" id="detailsSource">Posted via listing</p>
+            <p class="details-posted-by" id="detailsPostedBy" hidden></p>
             <a class="btn btn-primary details-link" id="detailsOpenLink" href="#" target="_blank" rel="noopener noreferrer">
               Open Original Job Posting
             </a>
@@ -498,6 +593,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/app-config.js?v=20260713d"></script>
-    <script src="/script.js?v=20260713e"></script>
+    <script src="/script.js?v=20260804o"></script>
   </body>
 </html>

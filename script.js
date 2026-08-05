@@ -105,6 +105,8 @@ function closeOpenSettingsMenus() {
       panel.setAttribute('aria-hidden', 'true');
     }
   });
+
+  closeSchoolThemeSubmenus();
 }
 
 function notifyTeacherAuthChange() {
@@ -1168,6 +1170,115 @@ function initThemeToggle() {
   });
 }
 
+function closeSchoolThemeSubmenus() {
+  document.querySelectorAll('.settings-submenu').forEach((submenu) => {
+    const trigger = submenu.querySelector('.settings-submenu-trigger');
+    submenu.classList.remove('open');
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+}
+
+function initSchoolThemeMenu() {
+  const storageKey = 'studentJobHubSchoolTheme';
+  const validSchools = new Set(['nic', 'uidaho']);
+  const submenus = document.querySelectorAll('.settings-submenu');
+  const storedSchool = localStorage.getItem(storageKey);
+  const preferredSchool = validSchools.has(storedSchool) ? storedSchool : 'nic';
+
+  const applySchoolTheme = (school) => {
+    const nextSchool = validSchools.has(school) ? school : 'nic';
+    document.documentElement.setAttribute('data-school', nextSchool);
+    localStorage.setItem(storageKey, nextSchool);
+
+    document.querySelectorAll('.school-theme-option').forEach((option) => {
+      const isActive = option.dataset.school === nextSchool;
+      option.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+  };
+
+  applySchoolTheme(preferredSchool);
+
+  if (!submenus.length) {
+    return;
+  }
+
+  submenus.forEach((submenu) => {
+    const trigger = submenu.querySelector('.settings-submenu-trigger');
+    if (!trigger) {
+      return;
+    }
+
+    const setSubmenuOpen = (open) => {
+      submenu.classList.toggle('open', open);
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+
+    // Touch / click fallback — desktop visibility is hover-driven in CSS.
+    trigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setSubmenuOpen(!submenu.classList.contains('open'));
+    });
+
+    submenu.addEventListener('mouseenter', () => {
+      trigger.setAttribute('aria-expanded', 'true');
+    });
+
+    submenu.addEventListener('mouseleave', () => {
+      setSubmenuOpen(false);
+    });
+
+    submenu.querySelectorAll('.school-theme-option').forEach((option) => {
+      option.addEventListener('click', (event) => {
+        event.stopPropagation();
+        applySchoolTheme(option.dataset.school);
+        setSubmenuOpen(false);
+        trigger.blur();
+      });
+    });
+  });
+}
+
+function initMobileNav() {
+  const hamburger = document.getElementById('navHamburger');
+  const nav = document.getElementById('mainNav');
+  if (!hamburger || !nav) {
+    return;
+  }
+
+  const setNavOpen = (open) => {
+    nav.classList.toggle('open', open);
+    hamburger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    hamburger.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+  };
+
+  hamburger.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setNavOpen(!nav.classList.contains('open'));
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('#mainNav') || event.target.closest('#navHamburger')) {
+      return;
+    }
+    setNavOpen(false);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setNavOpen(false);
+    }
+  });
+
+  // Keep hamburger closed when resizing back to desktop.
+  window.addEventListener('resize', () => {
+    if (window.matchMedia('(min-width: 641px)').matches) {
+      setNavOpen(false);
+    }
+  });
+}
+
 function initSettingsMenu() {
   const menus = document.querySelectorAll('.settings-menu');
   if (!menus.length) {
@@ -1184,6 +1295,7 @@ function initSettingsMenu() {
     if (panel) {
       panel.setAttribute('aria-hidden', 'true');
     }
+    closeSchoolThemeSubmenus();
   };
 
   const openMenu = (menu) => {
@@ -1285,6 +1397,7 @@ function initJobsModal() {
   const detailsModal = document.getElementById('jobDetailsModal');
 
   const openBtn = document.getElementById('openUpload');
+  const postJobListingsBtn = document.getElementById('postJobListingsBtn');
   const quickGuideWrap = document.querySelector('.guide-tooltip-wrap');
   const teacherAccessNotice = document.getElementById('teacherAccessNotice');
   const closeBtn = document.getElementById('closeUpload');
@@ -1332,8 +1445,10 @@ function initJobsModal() {
   let jobsCache = [];
   let hasLoadedRemoteJobs = false;
   let activeCategory = 'pta';
+  let jobTypeTabs = [];
 
-  const jobCategoryMeta = {
+  const categoriesStorageKey = 'studentJobHubJobTypes';
+  const builtInJobCategoryMeta = {
     pta: {
       label: 'Physical Therapy Assistant',
       eyebrow: 'PTA Jobs Board',
@@ -1349,6 +1464,7 @@ function initJobsModal() {
       rolePlaceholder: 'PTA Student Assistant',
       orgPlaceholder: 'Organization name',
       descriptionPlaceholder: 'Describe duties, required skills, and ideal student profile.',
+      builtIn: true,
     },
     'civil-engineering': {
       label: 'Civil Engineering',
@@ -1365,10 +1481,23 @@ function initJobsModal() {
       rolePlaceholder: 'Civil Engineering Student Assistant',
       orgPlaceholder: 'Organization name',
       descriptionPlaceholder: 'Describe duties, required skills, and ideal student profile.',
+      builtIn: true,
     },
   };
 
-  const jobTypeTabs = Array.from(document.querySelectorAll('.jobs-type-link'));
+  let jobCategoryMeta = { ...builtInJobCategoryMeta };
+
+  const jobsTypeNav = document.getElementById('jobsTypeNav');
+  const jobsTypeSelectTrigger = document.getElementById('jobsTypeSelectTrigger');
+  const jobsTypeSelectLabel = document.getElementById('jobsTypeSelectLabel');
+  const jobsTypeSidebar = document.querySelector('.jobs-type-sidebar');
+  const addJobTypeBtn = document.getElementById('addJobTypeBtn');
+  const addJobTypeModal = document.getElementById('addJobTypeModal');
+  const addJobTypeForm = document.getElementById('addJobTypeForm');
+  const newJobTypeNameInput = document.getElementById('newJobTypeName');
+  const addJobTypeMessage = document.getElementById('addJobTypeMessage');
+  const closeAddJobTypeBtn = document.getElementById('closeAddJobType');
+  const cancelAddJobTypeBtn = document.getElementById('cancelAddJobType');
   const listingsSubtitle = document.getElementById('listingsSubtitle');
   const jobsHeroEyebrow = document.getElementById('jobsHeroEyebrow');
   const jobsHeroTitle = document.getElementById('jobsHeroTitle');
@@ -1385,6 +1514,10 @@ function initJobsModal() {
   const jobsSortSelect = document.getElementById('jobsSort');
   const jobsClearFiltersBtn = document.getElementById('jobsClearFilters');
   const jobsResultCount = document.getElementById('jobsResultCount');
+  const jobsResultCountInline = document.getElementById('jobsResultCountInline');
+  const jobsFiltersToggle = document.getElementById('jobsFiltersToggle');
+  const jobsFiltersPanel = document.getElementById('jobsFiltersPanel');
+  const detailsPostedBy = document.getElementById('detailsPostedBy');
   const urlRoleTitleInput = document.getElementById('urlRoleTitle');
   const urlOrganizationInput = document.getElementById('urlOrganization');
   const jobUrlInput = document.getElementById('jobUrl');
@@ -1398,7 +1531,7 @@ function initJobsModal() {
   };
 
   const escapeHtml = (value) => {
-    return value
+    return String(value || '')
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
@@ -1408,6 +1541,190 @@ function initJobsModal() {
 
   const generateJobId = () => {
     return `job-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  };
+
+  const slugifyJobType = (label) => {
+    return String(label || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64);
+  };
+
+  const formatPosterName = (session = teacherAuthState.session) => {
+    const meta = session?.user?.user_metadata || {};
+    const first = String(meta.first_name || '').trim();
+    const last = String(meta.last_name || '').trim();
+    if (first && last) {
+      return `${first} ${last.charAt(0).toUpperCase()}.`;
+    }
+    if (first) {
+      return first;
+    }
+    const email = String(session?.user?.email || '').trim();
+    if (email) {
+      return email.split('@')[0];
+    }
+    return '';
+  };
+
+  const buildCategoryMeta = (label, { builtIn = false } = {}) => {
+    const trimmed = String(label || '').trim();
+    return {
+      label: trimmed,
+      eyebrow: `${trimmed} Jobs Board`,
+      title: `Opportunities for ${trimmed} Students`,
+      panelTitle: 'Graduating Soon or Exploring Careers?',
+      panelBody: `Explore Idaho ${trimmed} job openings from faculty posted links and detailed listings built for college students preparing to enter the field.`,
+      subtitle: `These opportunities are for ${trimmed} students searching for jobs.`,
+      empty: `No ${trimmed} listings yet.`,
+      urlRolePlaceholder: `${trimmed} Role`,
+      urlOrgPlaceholder: 'Organization name',
+      urlPlaceholder: 'https://example.com/careers/role',
+      rolePlaceholder: `${trimmed} Student Role`,
+      orgPlaceholder: 'Organization name',
+      descriptionPlaceholder: 'Describe duties, required skills, and ideal student profile.',
+      builtIn: Boolean(builtIn),
+    };
+  };
+
+  const loadCustomCategories = () => {
+    try {
+      const raw = localStorage.getItem(categoriesStorageKey);
+      if (!raw) {
+        return {};
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return {};
+      }
+      const custom = {};
+      Object.entries(parsed).forEach(([slug, entry]) => {
+        if (!slug || builtInJobCategoryMeta[slug]) {
+          return;
+        }
+        const label = typeof entry === 'string' ? entry : entry?.label;
+        if (!label) {
+          return;
+        }
+        custom[slug] = {
+          ...buildCategoryMeta(label),
+          ...(typeof entry === 'object' && entry ? entry : {}),
+          label: String(label).trim(),
+          builtIn: false,
+        };
+      });
+      return custom;
+    } catch {
+      return {};
+    }
+  };
+
+  const saveCustomCategories = () => {
+    const custom = {};
+    Object.entries(jobCategoryMeta).forEach(([slug, meta]) => {
+      if (meta?.builtIn) {
+        return;
+      }
+      custom[slug] = {
+        label: meta.label,
+        eyebrow: meta.eyebrow,
+        title: meta.title,
+        panelTitle: meta.panelTitle,
+        panelBody: meta.panelBody,
+        subtitle: meta.subtitle,
+        empty: meta.empty,
+        urlRolePlaceholder: meta.urlRolePlaceholder,
+        urlOrgPlaceholder: meta.urlOrgPlaceholder,
+        urlPlaceholder: meta.urlPlaceholder,
+        rolePlaceholder: meta.rolePlaceholder,
+        orgPlaceholder: meta.orgPlaceholder,
+        descriptionPlaceholder: meta.descriptionPlaceholder,
+      };
+    });
+    localStorage.setItem(categoriesStorageKey, JSON.stringify(custom));
+  };
+
+  const ensureCategoryMeta = (slug, labelHint = '') => {
+    if (!slug) {
+      return 'pta';
+    }
+    if (jobCategoryMeta[slug]) {
+      return slug;
+    }
+    const label = labelHint
+      || slug.split('-').filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+      || slug;
+    jobCategoryMeta[slug] = buildCategoryMeta(label);
+    saveCustomCategories();
+    return slug;
+  };
+
+  const refreshJobCategoryMeta = () => {
+    jobCategoryMeta = {
+      ...builtInJobCategoryMeta,
+      ...loadCustomCategories(),
+    };
+  };
+
+  const populateJobTypeSelects = (selectedCategory = activeCategory) => {
+    const selected = jobCategoryMeta[selectedCategory] ? selectedCategory : 'pta';
+    [listingJobTypeSelect, listingJobTypeTemplateSelect].forEach((select) => {
+      if (!select) {
+        return;
+      }
+      select.innerHTML = '';
+      Object.entries(jobCategoryMeta).forEach(([slug, meta]) => {
+        const option = document.createElement('option');
+        option.value = slug;
+        option.textContent = meta.label;
+        select.append(option);
+      });
+      select.value = selected;
+    });
+  };
+
+  const setJobsTypeDropdownOpen = (open) => {
+    if (!jobsTypeSidebar || !jobsTypeSelectTrigger) {
+      return;
+    }
+    jobsTypeSidebar.classList.toggle('types-open', open);
+    jobsTypeSelectTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  const syncJobsTypeSelectLabel = (category) => {
+    const meta = jobCategoryMeta[category] || jobCategoryMeta.pta;
+    if (jobsTypeSelectLabel && meta) {
+      jobsTypeSelectLabel.textContent = meta.label;
+    }
+  };
+
+  const renderJobTypeTabs = () => {
+    if (!jobsTypeNav) {
+      return;
+    }
+
+    jobsTypeNav.innerHTML = '';
+    Object.entries(jobCategoryMeta).forEach(([slug, meta]) => {
+      const button = document.createElement('button');
+      button.className = 'jobs-type-link';
+      button.type = 'button';
+      button.setAttribute('role', 'tab');
+      button.id = `jobType-${slug}`;
+      button.dataset.category = slug;
+      button.setAttribute('aria-controls', 'jobsList');
+      button.textContent = meta.label;
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        setActiveJobCategory(slug);
+        setJobsTypeDropdownOpen(false);
+      });
+      jobsTypeNav.append(button);
+    });
+
+    jobTypeTabs = Array.from(jobsTypeNav.querySelectorAll('.jobs-type-link'));
+    syncJobsTypeSelectLabel(activeCategory);
   };
 
   const isLikelyUrl = (value) => {
@@ -1449,23 +1766,25 @@ function initJobsModal() {
       ? ''
       : Math.max(0, Number(job.pay) || 0);
     const parsedLocation = parseLocation(job.location || '');
+    const categorySlug = ensureCategoryMeta(job.category || 'pta');
 
     return {
       id: job.id || generateJobId(),
       entryMode: job.entryMode || (job.postingUrl ? 'url' : 'template'),
-      role: job.role || 'PTA Listing',
+      role: job.role || 'Job Listing',
       organization: job.organization || 'Organization',
       location: buildLocation(job.city || parsedLocation.city, job.state || parsedLocation.state),
       state: job.state || parsedLocation.state || '',
       city: job.city || parsedLocation.city || '',
       type: job.type || 'Listing',
-      category: jobCategoryMeta[job.category] ? job.category : 'pta',
+      category: categorySlug,
       details: job.details || 'No additional details provided.',
       sourceLabel: job.sourceLabel || 'listing',
       postingUrl: job.postingUrl || '',
       phone: job.phone || '',
       pay: normalizedPay,
       benefits: Array.isArray(job.benefits) ? job.benefits.filter(Boolean) : [],
+      postedBy: String(job.postedBy || job.posted_by || '').trim(),
     };
   };
 
@@ -1555,6 +1874,7 @@ function initJobsModal() {
       phone: row.phone,
       pay: row.pay == null ? '' : Number(row.pay),
       benefits: Array.isArray(row.benefits) ? row.benefits : [],
+      postedBy: row.posted_by || '',
     });
   };
 
@@ -1575,6 +1895,7 @@ function initJobsModal() {
       phone: job.phone || '',
       pay: job.pay === '' ? null : Number(job.pay),
       benefits: job.benefits || [],
+      posted_by: job.postedBy || '',
       created_by: teacherAuthState.session?.user?.id || null,
     };
   };
@@ -1642,6 +1963,7 @@ function initJobsModal() {
     item.dataset.phone = jobData.phone || '';
     item.dataset.pay = jobData.pay === '' ? '' : String(jobData.pay);
     item.dataset.benefits = JSON.stringify(jobData.benefits || []);
+    item.dataset.postedBy = jobData.postedBy || '';
   };
 
   const inferCardData = (item) => {
@@ -1658,6 +1980,10 @@ function initJobsModal() {
     const details = item.dataset.details || notes[0] || 'No additional details provided.';
     const sourceLine = notes.find((line) => line.toLowerCase().startsWith('posted via')) || '';
     const sourceLabel = item.dataset.sourceLabel || sourceLine.replace(/^Posted via\s*/i, '') || 'listing';
+    const postedByLine = item.querySelector('.job-posted-by')?.textContent?.trim() || '';
+    const postedBy = item.dataset.postedBy
+      || postedByLine.replace(/^Posted by\s*/i, '').trim()
+      || '';
     const postingUrl = item.dataset.postingUrl || (isLikelyUrl(details) ? details : '');
     let benefits = [];
 
@@ -1683,6 +2009,7 @@ function initJobsModal() {
       phone: item.dataset.phone || '',
       pay: item.dataset.pay === '' ? '' : item.dataset.pay,
       benefits,
+      postedBy,
     });
   };
 
@@ -1710,7 +2037,12 @@ function initJobsModal() {
     jobsCache = remoteJobs;
     saveStoredJobs(remoteJobs);
     hasLoadedRemoteJobs = true;
-    renderJobs({ refreshLocations: true });
+    remoteJobs.forEach((job) => {
+      ensureCategoryMeta(job.category);
+    });
+    renderJobTypeTabs();
+    populateJobTypeSelects(activeCategory);
+    setActiveJobCategory(activeCategory);
   };
 
   const getJobs = () => {
@@ -1802,6 +2134,10 @@ function initJobsModal() {
       : job.details;
 
     item.className = 'job-item reveal';
+    const postedByHtml = job.postedBy
+      ? `<p class="job-posted-by">Posted by ${escapeHtml(job.postedBy)}</p>`
+      : '';
+
     item.innerHTML = `
       <div class="job-item-head">
         <div class="job-heading-stack">
@@ -1813,6 +2149,7 @@ function initJobsModal() {
       <p class="job-location">${escapeHtml(job.location)}</p>
       <p class="job-notes">${escapeHtml(displayDetails)}</p>
       <p class="job-notes">Posted via ${escapeHtml(job.sourceLabel)}</p>
+      ${postedByHtml}
     `;
 
     decorateJobCard(item, job);
@@ -2023,21 +2360,22 @@ function initJobsModal() {
   };
 
   const updateJobsResultCount = (shown, total) => {
-    if (!jobsResultCount) {
-      return;
-    }
+    let text = '';
 
     if (total === 0) {
-      jobsResultCount.textContent = 'No listings in this job type yet.';
-      return;
+      text = 'No listings in this job type yet.';
+    } else if (shown === total) {
+      text = `Showing ${shown} listing${shown === 1 ? '' : 's'}.`;
+    } else {
+      text = `Showing ${shown} of ${total} listing${total === 1 ? '' : 's'}.`;
     }
 
-    if (shown === total) {
-      jobsResultCount.textContent = `Showing ${shown} listing${shown === 1 ? '' : 's'}.`;
-      return;
+    if (jobsResultCount) {
+      jobsResultCount.textContent = text;
     }
-
-    jobsResultCount.textContent = `Showing ${shown} of ${total} listing${total === 1 ? '' : 's'}.`;
+    if (jobsResultCountInline) {
+      jobsResultCountInline.textContent = text;
+    }
   };
 
   const clearJobFilters = () => {
@@ -2098,6 +2436,7 @@ function initJobsModal() {
       return;
     }
 
+    const scrollY = window.scrollY;
     activeCategory = category;
 
     jobTypeTabs.forEach((tab) => {
@@ -2112,7 +2451,14 @@ function initJobsModal() {
     }
 
     applyCategoryCopy(category);
+    syncJobsTypeSelectLabel(category);
     renderJobs({ refreshLocations: true });
+
+    // Keep page scroll stable when hero/listings height changes after a type switch.
+    window.scrollTo(0, scrollY);
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollY);
+    });
   };
 
   const getCategoryForSave = () => {
@@ -2242,6 +2588,16 @@ function initJobsModal() {
       : jobData.details;
     detailsSource.textContent = `Posted via ${jobData.sourceLabel}`;
 
+    if (detailsPostedBy) {
+      if (jobData.postedBy) {
+        detailsPostedBy.hidden = false;
+        detailsPostedBy.textContent = `Posted by ${jobData.postedBy}`;
+      } else {
+        detailsPostedBy.hidden = true;
+        detailsPostedBy.textContent = '';
+      }
+    }
+
     detailsPhoneSection.hidden = !jobData.phone;
     detailsPhone.textContent = jobData.phone;
     detailsPaySection.hidden = jobData.pay === '';
@@ -2354,10 +2710,17 @@ function initJobsModal() {
 
   const setTeacherAccessState = (authState) => {
     canManageJobs = Boolean(authState.configured && authState.session && authState.isAuthenticated);
+    const canAddJobTypes = Boolean(canManageJobs && authState.isAdmin);
 
     if (openBtn) {
       openBtn.hidden = !canManageJobs;
       openBtn.disabled = !canManageJobs;
+    }
+
+    if (postJobListingsBtn) {
+      const showPostJob = Boolean(canManageJobs && authState.isAdmin);
+      postJobListingsBtn.classList.toggle('hidden', !showPostJob);
+      postJobListingsBtn.disabled = !showPostJob;
     }
 
     if (quickGuideWrap) {
@@ -2372,6 +2735,11 @@ function initJobsModal() {
     if (deleteJobDetailsBtn) {
       deleteJobDetailsBtn.hidden = !canManageJobs;
       deleteJobDetailsBtn.disabled = !canManageJobs;
+    }
+
+    if (addJobTypeBtn) {
+      addJobTypeBtn.classList.toggle('hidden', !canAddJobTypes);
+      addJobTypeBtn.disabled = !canAddJobTypes;
     }
 
     if (!teacherAccessNotice) {
@@ -2395,16 +2763,131 @@ function initJobsModal() {
     teacherAccessNotice.textContent = '';
   };
 
+  const resolvePostedByForSave = (jobId) => {
+    if (jobId && editingJobId) {
+      const existing = findJobById(jobId);
+      if (existing?.postedBy) {
+        return existing.postedBy;
+      }
+    }
+    return formatPosterName();
+  };
+
+  const setFiltersPanelOpen = (open) => {
+    if (!jobsFiltersPanel || !jobsFiltersToggle) {
+      return;
+    }
+
+    jobsFiltersPanel.hidden = !open;
+    jobsFiltersToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    jobsFiltersToggle.classList.toggle('is-active', open);
+
+    if (jobsResultCountInline) {
+      jobsResultCountInline.hidden = open;
+    }
+  };
+
+  const openAddJobTypeModal = () => {
+    if (!addJobTypeModal || !teacherAuthState.isAdmin || !canManageJobs) {
+      return;
+    }
+
+    if (addJobTypeForm) {
+      addJobTypeForm.reset();
+    }
+    if (addJobTypeMessage) {
+      addJobTypeMessage.textContent = '';
+      addJobTypeMessage.className = 'auth-message';
+    }
+
+    addJobTypeModal.classList.add('open');
+    addJobTypeModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    newJobTypeNameInput?.focus();
+  };
+
+  const closeAddJobTypeModal = () => {
+    if (!addJobTypeModal) {
+      return;
+    }
+
+    addJobTypeModal.classList.remove('open');
+    addJobTypeModal.setAttribute('aria-hidden', 'true');
+
+    const otherModalOpen = Boolean(
+      modal?.classList.contains('open') || detailsModal?.classList.contains('open')
+    );
+    if (!otherModalOpen) {
+      document.body.classList.remove('modal-open');
+    }
+
+    if (addJobTypeForm) {
+      addJobTypeForm.reset();
+    }
+    if (addJobTypeMessage) {
+      addJobTypeMessage.textContent = '';
+    }
+  };
+
+  const addCustomJobType = (label) => {
+    const trimmed = String(label || '').trim();
+    if (!trimmed) {
+      return { error: 'Enter a job type name.' };
+    }
+
+    let slug = slugifyJobType(trimmed);
+    if (!slug) {
+      return { error: 'Use letters or numbers in the name.' };
+    }
+
+    const existingMatch = Object.entries(jobCategoryMeta).find(([, meta]) => (
+      String(meta.label || '').toLowerCase() === trimmed.toLowerCase()
+    ));
+    if (existingMatch) {
+      return { error: 'That job type already exists.', slug: existingMatch[0] };
+    }
+
+    if (jobCategoryMeta[slug]) {
+      let suffix = 2;
+      while (jobCategoryMeta[`${slug}-${suffix}`]) {
+        suffix += 1;
+      }
+      slug = `${slug}-${suffix}`;
+    }
+
+    jobCategoryMeta[slug] = buildCategoryMeta(trimmed);
+    saveCustomCategories();
+    renderJobTypeTabs();
+    populateJobTypeSelects(slug);
+    setActiveJobCategory(slug);
+    return { slug };
+  };
+
+  refreshJobCategoryMeta();
   initializeJobs();
+  jobsCache.forEach((job) => {
+    ensureCategoryMeta(job.category);
+  });
+  renderJobTypeTabs();
+  populateJobTypeSelects(activeCategory);
   setActiveJobCategory(activeCategory);
   attachLocationDropdownBehavior(urlStateSelect, urlCitySelect);
   attachLocationDropdownBehavior(templateStateSelect, templateCitySelect);
 
-  jobTypeTabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      setActiveJobCategory(tab.dataset.category);
+  if (jobsTypeSelectTrigger) {
+    jobsTypeSelectTrigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isOpen = jobsTypeSidebar?.classList.contains('types-open');
+      setJobsTypeDropdownOpen(!isOpen);
     });
-  });
+
+    document.addEventListener('click', (event) => {
+      if (event.target.closest('.jobs-type-sidebar')) {
+        return;
+      }
+      setJobsTypeDropdownOpen(false);
+    });
+  }
 
   if (jobsSearchInput) {
     jobsSearchInput.addEventListener('input', () => {
@@ -2416,6 +2899,50 @@ function initJobsModal() {
   if (jobsToolbar) {
     jobsToolbar.addEventListener('submit', (event) => {
       event.preventDefault();
+    });
+  }
+
+  if (jobsFiltersToggle) {
+    jobsFiltersToggle.addEventListener('click', () => {
+      const isOpen = jobsFiltersPanel ? !jobsFiltersPanel.hidden : false;
+      setFiltersPanelOpen(!isOpen);
+    });
+  }
+
+  if (addJobTypeBtn) {
+    addJobTypeBtn.addEventListener('click', () => {
+      openAddJobTypeModal();
+    });
+  }
+
+  if (closeAddJobTypeBtn) {
+    closeAddJobTypeBtn.addEventListener('click', closeAddJobTypeModal);
+  }
+
+  if (cancelAddJobTypeBtn) {
+    cancelAddJobTypeBtn.addEventListener('click', closeAddJobTypeModal);
+  }
+
+  addJobTypeModal?.querySelector('[data-close-add-job-type]')?.addEventListener('click', closeAddJobTypeModal);
+
+  if (addJobTypeForm) {
+    addJobTypeForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!teacherAuthState.isAdmin || !canManageJobs) {
+        return;
+      }
+
+      const result = addCustomJobType(newJobTypeNameInput?.value || '');
+      if (result.error) {
+        if (addJobTypeMessage) {
+          addJobTypeMessage.textContent = result.error;
+          addJobTypeMessage.className = 'auth-message error';
+        }
+        return;
+      }
+
+      closeAddJobTypeModal();
+      showFlash(`Added job type “${jobCategoryMeta[result.slug]?.label || 'New type'}”.`, 'ok');
     });
   }
 
@@ -2476,6 +3003,9 @@ function initJobsModal() {
   }
 
   openBtn.addEventListener('click', openCreateModal);
+  if (postJobListingsBtn) {
+    postJobListingsBtn.addEventListener('click', openCreateModal);
+  }
   closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', closeModal);
 
@@ -2531,6 +3061,11 @@ function initJobsModal() {
   });
 
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && addJobTypeModal?.classList.contains('open')) {
+      closeAddJobTypeModal();
+      return;
+    }
+
     if (event.key === 'Escape' && modal.classList.contains('open')) {
       closeModal();
     }
@@ -2688,6 +3223,7 @@ function initJobsModal() {
         phone: '',
         pay: '',
         payBenefits: '',
+        postedBy: resolvePostedByForSave(editingJobId),
       });
 
       setActiveJobCategory(savedJob.category);
@@ -2739,6 +3275,7 @@ function initJobsModal() {
         phone,
         pay: payValue,
         benefits: [...benefitItems],
+        postedBy: resolvePostedByForSave(editingJobId),
       });
 
       setActiveJobCategory(savedJob.category);
@@ -2752,8 +3289,10 @@ function initJobsModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initMobileNav();
   initSettingsMenu();
   initThemeToggle();
+  initSchoolThemeMenu();
   initTeacherAuth();
   initLoginPage();
   initChangePasswordPage();

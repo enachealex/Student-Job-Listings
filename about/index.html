@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
+    <script>(function(){try{if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');var s=localStorage.getItem('studentJobHubSchoolTheme');document.documentElement.setAttribute('data-school',s==='uidaho'?'uidaho':'nic');}catch(e){}})();</script>
     <meta
       name="description"
       content="About the Idaho Student Job Hub and how faculty and college students use it statewide."
@@ -17,7 +17,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260713d" />
+    <link rel="stylesheet" href="/styles.css?v=20260804q" />
   </head>
   <body data-page="about">
     <header class="site-header">
@@ -26,7 +26,19 @@
           <img class="brand-mark" src="/assets/jump-vault-logo.png" alt="The Jump Vault" width="38" height="38" />
           <span>Student Job Hub</span>
         </a>
-        <nav class="nav-links" aria-label="Main navigation">
+                <button
+          class="nav-hamburger"
+          id="navHamburger"
+          type="button"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="mainNav"
+        >
+          <span class="nav-hamburger-line" aria-hidden="true"></span>
+          <span class="nav-hamburger-line" aria-hidden="true"></span>
+          <span class="nav-hamburger-line" aria-hidden="true"></span>
+        </button>
+        <nav class="nav-links" id="mainNav" aria-label="Main navigation">
           <a class="nav-link" data-page="home" href="/">Home</a>
           <a class="nav-link" data-page="about" href="/about">About</a>
           <a class="nav-link" data-page="jobs" href="/jobs">Jobs</a>
@@ -51,6 +63,37 @@
               >
                 Dark Mode
               </button>
+              <div class="settings-submenu">
+                <button
+                  class="settings-submenu-trigger"
+                  type="button"
+                  aria-expanded="false"
+                  aria-haspopup="true"
+                  aria-controls="schoolThemeOptions"
+                >
+                  Theme
+                </button>
+                <div class="settings-submenu-panel" id="schoolThemeOptions" role="menu">
+                  <button
+                    type="button"
+                    class="school-theme-option"
+                    role="menuitemradio"
+                    data-school="nic"
+                    aria-checked="true"
+                  >
+                    North Idaho College
+                  </button>
+                  <button
+                    type="button"
+                    class="school-theme-option"
+                    role="menuitemradio"
+                    data-school="uidaho"
+                    aria-checked="false"
+                  >
+                    University of Idaho
+                  </button>
+                </div>
+              </div>
               <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
               <button class="settings-link hidden" id="profileButton" type="button">User</button>
@@ -226,6 +269,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/app-config.js?v=20260713d"></script>
-    <script src="/script.js?v=20260713e"></script>
+    <script src="/script.js?v=20260804o"></script>
   </body>
 </html>
