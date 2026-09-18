@@ -55,13 +55,15 @@ for each row execute procedure public.touch_updated_at();
 
 alter table public.jobs enable row level security;
 
-create policy if not exists jobs_read_all
+drop policy if exists jobs_read_all on public.jobs;
+create policy jobs_read_all
 on public.jobs
 for select
 to anon, authenticated
 using (true);
 
-create policy if not exists jobs_insert_authenticated
+drop policy if exists jobs_insert_authenticated on public.jobs;
+create policy jobs_insert_authenticated
 on public.jobs
 for insert
 to authenticated
@@ -69,7 +71,8 @@ with check (
   auth.uid() is not null
 );
 
-create policy if not exists jobs_update_authenticated
+drop policy if exists jobs_update_authenticated on public.jobs;
+create policy jobs_update_authenticated
 on public.jobs
 for update
 to authenticated
@@ -80,7 +83,8 @@ with check (
   auth.uid() is not null
 );
 
-create policy if not exists jobs_delete_authenticated
+drop policy if exists jobs_delete_authenticated on public.jobs;
+create policy jobs_delete_authenticated
 on public.jobs
 for delete
 to authenticated

@@ -14,7 +14,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260804y" />
+    <link rel="stylesheet" href="/styles.css?v=20260917g" />
   </head>
   <body data-page="change-password">
     <header class="site-header">
@@ -32,7 +32,7 @@
           <h1 id="changePasswordTitle">Set a New Password</h1>
           <p class="auth-subtext">For security, you must update your password before managing jobs.</p>
           <form id="changePasswordForm" class="auth-form">
-            <label for="newPassword">New Password</label>
+            <label for="newPassword">New Password<span class="required-mark" aria-hidden="true">*</span></label>
             <input id="newPassword" type="password" autocomplete="new-password" required />
 
             <div class="pw-strength-bar" aria-hidden="true">
@@ -46,7 +46,7 @@
               <li id="req-special" class="pw-req">One special character (!@#$…)</li>
             </ul>
 
-            <label for="confirmPassword">Confirm Password</label>
+            <label for="confirmPassword">Confirm Password<span class="required-mark" aria-hidden="true">*</span></label>
             <input id="confirmPassword" type="password" autocomplete="new-password" required />
             <p class="pw-match-msg" id="pwMatchMsg" aria-live="polite"></p>
 
@@ -64,7 +64,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/app-config.js?v=20260713d"></script>
-    <script src="/script.js?v=20260804o"></script>
+    <script src="/app-config.js?v=20260917g"></script>
+    <script src="/script.js?v=20260917g"></script>
   </body>
 </html>

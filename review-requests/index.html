@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>(function(){try{if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');var s=localStorage.getItem('studentJobHubSchoolTheme');document.documentElement.setAttribute('data-school',s==='uidaho'?'uidaho':'nic');}catch(e){}})();</script>
-    <meta name="description" content="Your profile for PTA Student Job Hub." />
-    <title>PTA Student Job Hub | Profile</title>
+    <meta name="description" content="Review job listings sent in by employers." />
+    <title>Student Job Hub | Job Requests</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,14 +16,14 @@
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
     <link rel="stylesheet" href="/styles.css?v=20260917g" />
   </head>
-  <body data-page="profile">
+  <body data-page="review-requests">
     <header class="site-header">
       <div class="container header-inner">
-        <a class="brand" href="/" aria-label="PTA Student Job Hub home">
+        <a class="brand" href="/" aria-label="Student Job Hub home">
           <img class="brand-mark" src="/assets/jump-vault-logo.png" alt="The Jump Vault" width="38" height="38" />
-          <span>PTA Student Job Hub</span>
+          <span>Student Job Hub</span>
         </a>
-                <button
+        <button
           class="nav-hamburger"
           id="navHamburger"
           type="button"
@@ -93,7 +93,7 @@
               </div>
               <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
-              <a class="settings-link hidden" id="profileButton" href="/profile">User</a>
+              <button class="settings-link hidden" id="profileButton" type="button">User</button>
               <a class="settings-link hidden" id="reviewRequestsButton" href="/review-requests">
                 Job Requests<span class="settings-link-count hidden" id="requestCountBadge"></span>
               </a>
@@ -105,104 +105,104 @@
     </header>
 
     <main>
-      <div class="container auth-shell">
-        <div class="profile-layout">
+      <div class="container admin-shell">
+        <h1 class="admin-page-title">Job Requests</h1>
+        <p class="admin-page-subtitle">
+          Jobs that employers have sent in. Read one, then choose Publish or Decline.
+        </p>
+        <p class="auth-message" id="requestsMessage" aria-live="polite"></p>
 
-          <!-- Profile info card -->
-          <section class="auth-card" aria-labelledby="profileTitle">
-            <h1 id="profileTitle">Your Profile</h1>
-            <p class="auth-subtext">Your account information.</p>
-
-            <dl class="profile-info" id="profileInfo">
-              <div class="profile-row">
-                <dt>Name</dt>
-                <dd id="profileName">—</dd>
-              </div>
-              <div class="profile-row">
-                <dt>Email</dt>
-                <dd id="profileEmail">—</dd>
-              </div>
-              <div class="profile-row">
-                <dt>Member since</dt>
-                <dd id="profileJoined">—</dd>
-              </div>
-            </dl>
-
-            <div class="profile-actions">
-              <button class="btn btn-primary" type="button" id="editProfileBtn">Edit Profile</button>
-            </div>
-            <p class="auth-message" id="profileMessage" aria-live="polite"></p>
-          </section>
-
-          <!-- Change password card -->
-          <section class="auth-card" aria-labelledby="changePasswordTitle">
-            <h1 id="changePasswordTitle">Change Password</h1>
-            <p class="auth-subtext">Update your password at any time.</p>
-            <form id="changePasswordForm" class="auth-form">
-              <label for="newPassword">New Password</label>
-              <input id="newPassword" type="password" autocomplete="new-password" required />
-
-              <div class="pw-strength-bar" aria-hidden="true">
-                <div id="pwStrengthFill" class="pw-strength-fill"></div>
-              </div>
-              <ul class="pw-requirements" id="pwRequirements" aria-live="polite">
-                <li id="req-length"  class="pw-req">At least 8 characters</li>
-                <li id="req-upper"   class="pw-req">One uppercase letter (A–Z)</li>
-                <li id="req-lower"   class="pw-req">One lowercase letter (a–z)</li>
-                <li id="req-number"  class="pw-req">One number (0–9)</li>
-                <li id="req-special" class="pw-req">One special character (!@#$…)</li>
-              </ul>
-
-              <label for="confirmPassword">Confirm Password</label>
-              <input id="confirmPassword" type="password" autocomplete="new-password" required />
-              <p class="pw-match-msg" id="pwMatchMsg" aria-live="polite"></p>
-
-              <button class="btn btn-primary" id="updatePasswordBtn" type="submit" disabled>Update Password</button>
-            </form>
-            <p class="auth-message" id="changePasswordMessage" aria-live="polite"></p>
-          </section>
-
+        <div class="requests-toolbar" role="tablist" aria-label="Filter requests">
+          <button class="requests-tab active" type="button" role="tab" aria-selected="true" data-status="pending">
+            Waiting for you<span class="requests-tab-count" id="countPending">0</span>
+          </button>
+          <button class="requests-tab" type="button" role="tab" aria-selected="false" data-status="approved">
+            Published<span class="requests-tab-count" id="countApproved">0</span>
+          </button>
+          <button class="requests-tab" type="button" role="tab" aria-selected="false" data-status="rejected">
+            Declined<span class="requests-tab-count" id="countRejected">0</span>
+          </button>
+          <button class="btn btn-muted btn-sm requests-refresh" id="refreshRequestsBtn" type="button">Refresh</button>
         </div>
+
+        <p class="requests-empty" id="requestsEmpty">Loading...</p>
+        <div class="requests-list" id="requestsList"></div>
       </div>
     </main>
 
-    <!-- Edit profile modal -->
-    <div class="modal" id="editProfileModal" aria-modal="true" aria-labelledby="editProfileModalTitle" aria-hidden="true">
-      <div class="modal-overlay" id="editProfileModalOverlay"></div>
+    <!-- Publish confirmation: staff pick which Job Type tab it lands under,
+         because the employer form deliberately does not ask them. -->
+    <div class="modal" id="publishModal" aria-modal="true" aria-labelledby="publishModalTitle" aria-hidden="true">
+      <div class="modal-overlay" data-close-publish></div>
       <div class="modal-card modal-card-sm">
         <div class="modal-top">
-          <h3 id="editProfileModalTitle">Edit Profile</h3>
-          <button class="close-btn" type="button" id="editProfileModalClose" aria-label="Close">&times;</button>
+          <h3 id="publishModalTitle">Publish this job</h3>
+          <button class="close-btn" type="button" data-close-publish aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
         <div class="modal-body">
-          <form id="editProfileForm" class="auth-form">
-            <div class="form-row-2">
-              <div class="field">
-                <label for="profileFirstName">First Name</label>
-                <input id="profileFirstName" type="text" autocomplete="given-name" />
-              </div>
-              <div class="field">
-                <label for="profileLastName">Last Name</label>
-                <input id="profileLastName" type="text" autocomplete="family-name" />
-              </div>
-            </div>
-            <div class="form-actions modal-form-actions">
-              <button class="btn btn-muted" type="button" id="editProfileCancel">Cancel</button>
-              <button class="btn btn-primary" type="submit" id="editProfileSave">Save</button>
+          <p class="publish-modal-role" id="publishModalRole"></p>
+          <form id="publishForm" class="auth-form">
+            <label for="publishCategory">Which Job Type should it appear under?<span class="required-mark" aria-hidden="true">*</span></label>
+            <select id="publishCategory" required></select>
+
+            <label class="publish-sponsor-row">
+              <input type="checkbox" id="publishSponsored" />
+              <span>
+                <strong>Feature this at the top of the list</strong>
+                <span class="publish-sponsor-hint" id="publishSponsorHint">
+                  Only tick this once the employer has paid for featured placement.
+                </span>
+              </span>
+            </label>
+
+            <div class="form-actions">
+              <button class="btn btn-muted" type="button" data-close-publish>Cancel</button>
+              <button class="btn btn-primary" type="submit" id="confirmPublishBtn">Publish it</button>
             </div>
           </form>
-          <p class="auth-message" id="editProfileMessage" aria-live="polite"></p>
+          <p class="auth-message" id="publishMessage" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decline confirmation -->
+    <div class="modal" id="declineModal" aria-modal="true" aria-labelledby="declineModalTitle" aria-hidden="true">
+      <div class="modal-overlay" data-close-decline></div>
+      <div class="modal-card modal-card-sm">
+        <div class="modal-top">
+          <h3 id="declineModalTitle">Decline this job</h3>
+          <button class="close-btn" type="button" data-close-decline aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="publish-modal-role" id="declineModalRole"></p>
+          <form id="declineForm" class="auth-form">
+            <label for="declineNote">Why are you declining? <span class="wizard-optional">(optional)</span></label>
+            <p class="admin-panel-hint">
+              This is only a note for you and other staff. The employer does not see it.
+            </p>
+            <textarea id="declineNote" rows="3"></textarea>
+            <div class="form-actions">
+              <button class="btn btn-muted" type="button" data-close-decline>Cancel</button>
+              <button class="btn btn-danger" type="submit" id="confirmDeclineBtn">Decline it</button>
+            </div>
+          </form>
+          <p class="auth-message" id="declineMessage" aria-live="polite"></p>
         </div>
       </div>
     </div>
 
     <footer class="footer">
       <div class="container">
-        <small>PTA Student Job Hub | <span data-year></span></small>
+        <small>Student Job Hub | <span data-year></span></small>
       </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/location-data.js?v=20260917g"></script>
     <script src="/app-config.js?v=20260917g"></script>
     <script src="/script.js?v=20260917g"></script>
   </body>

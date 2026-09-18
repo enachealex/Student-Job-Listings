@@ -64,9 +64,11 @@ Deno.serve(async (req) => {
     return new Response('Cannot modify admin permissions', { status: 400, headers: corsHeaders });
   }
 
+  // app_metadata is service-role only; user_metadata is writable by the user themselves
+  // and must never hold a permission flag.
   const { error } = await adminClient.auth.admin.updateUserById(userId, {
-    user_metadata: {
-      ...target.user.user_metadata,
+    app_metadata: {
+      ...target.user.app_metadata,
       can_manage_users: canManageUsers,
     },
   });

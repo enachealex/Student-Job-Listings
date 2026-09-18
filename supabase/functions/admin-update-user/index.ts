@@ -32,7 +32,10 @@ Deno.serve(async (req) => {
   const { data: requesterData, error: requesterError } = await client.auth.getUser(token);
   const requesterEmail = (requesterData?.user?.email || '').toLowerCase();
   const requesterIsAdmin = requesterEmail === adminEmail;
-  const requesterCanManage = requesterData?.user?.user_metadata?.can_manage_users === true;
+  // Read from app_metadata, not user_metadata: user_metadata is writable by the user
+  // themselves via PUT /auth/v1/user, so trusting it here would let any signed-in user
+  // grant themselves user-management rights. app_metadata is service-role only.
+  const requesterCanManage = requesterData?.user?.app_metadata?.can_manage_users === true;
 
   if (requesterError || !requesterData?.user || (!requesterIsAdmin && !requesterCanManage)) {
     return new Response('Forbidden', { status: 403, headers: corsHeaders });
@@ -65,12 +68,21 @@ Deno.serve(async (req) => {
     ...existingMeta,
     ...(typeof firstName === 'string' ? { first_name: firstName.trim() } : {}),
     ...(typeof lastName === 'string' ? { last_name: lastName.trim() } : {}),
-    ...(typeof canManageUsers === 'boolean' ? { can_manage_users: canManageUsers } : {}),
     ...(resetPassword ? { must_change_password: true } : {}),
   };
+  // Strip any stale copy so a self-set value can never be mistaken for the real flag.
+  delete newMeta.can_manage_users;
 
   const updatePayload: Record<string, unknown> = { user_metadata: newMeta };
   if (resetPassword) updatePayload.password = RESET_PASSWORD;
+
+  // The permission flag lives in app_metadata, which only the service role can write.
+  if (typeof canManageUsers === 'boolean') {
+    updatePayload.app_metadata = {
+      ...(targetData.user.app_metadata || {}),
+      can_manage_users: canManageUsers,
+    };
+  }
 
   const { error } = await client.auth.admin.updateUserById(userId, updatePayload);
   if (error) return new Response(error.message, { status: 500, headers: corsHeaders });

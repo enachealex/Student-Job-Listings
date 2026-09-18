@@ -14,7 +14,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260804y" />
+    <link rel="stylesheet" href="/styles.css?v=20260917g" />
   </head>
   <body data-page="login">
     <header class="site-header">
@@ -32,10 +32,10 @@
           <h1 id="loginTitle">Sign In</h1>
           <p class="auth-subtext">Only approved users can manage job listings. Public visitors can still view jobs.</p>
           <form id="loginForm" class="auth-form">
-            <label for="loginEmail">Email</label>
+            <label for="loginEmail">Email<span class="required-mark" aria-hidden="true">*</span></label>
             <input id="loginEmail" type="email" autocomplete="username" required />
 
-            <label for="loginPassword">Password</label>
+            <label for="loginPassword">Password<span class="required-mark" aria-hidden="true">*</span></label>
             <input id="loginPassword" type="password" autocomplete="current-password" required />
 
             <div id="loginCaptcha"></div>
@@ -56,7 +56,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
-    <script src="/app-config.js?v=20260713d"></script>
-    <script src="/script.js?v=20260804o"></script>
+    <script src="/app-config.js?v=20260917g"></script>
+    <script src="/script.js?v=20260917g"></script>
   </body>
 </html>

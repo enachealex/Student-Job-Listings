@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const requester = await adminClient.auth.getUser(token);
   const requesterEmail = (requester.data.user?.email || '').toLowerCase();
-  const canManage = requester.data.user?.user_metadata?.can_manage_users === true;
+  const canManage = requester.data.user?.app_metadata?.can_manage_users === true;
 
   if (requester.error || !requester.data.user || (requesterEmail !== adminEmail && !canManage)) {
     return new Response('Not authorized to list users', { status: 403, headers: corsHeaders });
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     createdAt: u.created_at,
     lastSignIn: u.last_sign_in_at,
     mustChangePassword: u.user_metadata?.must_change_password === true,
-    canManageUsers: u.user_metadata?.can_manage_users === true,
+    canManageUsers: u.app_metadata?.can_manage_users === true,
     isAdmin: u.email?.toLowerCase() === adminEmail,
   }));
 

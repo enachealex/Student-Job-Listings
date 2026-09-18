@@ -85,6 +85,26 @@ Important:
 
 - Use `SERVICE_ROLE_KEY` only in edge function secrets, never in `app-config.js`.
 
+## 5b) Migrate the user-management permission flag
+
+`can_manage_users` is stored in `app_metadata`, not `user_metadata`.
+
+This matters: `user_metadata` is writable by the signed-in user via
+`PUT /auth/v1/user`, so a flag kept there could be set by any user on their own
+account. `app_metadata` can only be written with the service role key.
+
+If you deployed an earlier version that used `user_metadata`, deploy the updated
+functions first, then run `migrate-can-manage-users.sql` in the Supabase SQL Editor.
+It copies the flag to `app_metadata` and strips the old copy. Safe to re-run.
+
+```bash
+supabase functions deploy admin-update-user
+supabase functions deploy list-users
+```
+
+Note: the flag is carried in the JWT, so after the admin grants or revokes it the
+affected user sees the change on their next token refresh or sign-in, not instantly.
+
 ## 6) Redeploy site after config changes
 
 After updating `app-config.js`, push and redeploy so production serves real Supabase values.

@@ -2412,3 +2412,1112 @@ textarea {
     width: min(320px, 92vw);
   }
 }
+
+/* ==========================================================================
+   Employer listing wizard (/request-listing)
+   Sized for one-time visitors on phones: larger type than the rest of the
+   site, 44px minimum targets (WCAG 2.5.5), and errors that are hard to miss.
+   ========================================================================== */
+
+.wizard-shell {
+  max-width: 720px;
+  padding: 2.5rem 0 4rem;
+}
+
+.btn-header-back {
+  margin-left: auto;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* --- intro ---------------------------------------------------------------- */
+.wizard-intro,
+.wizard-card,
+.wizard-done {
+  background: var(--grad-card);
+  border: 1px solid var(--header-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 2.25rem;
+}
+
+.wizard-intro h1,
+.wizard-done h1 {
+  font-size: clamp(1.75rem, 4vw, 2.3rem);
+  margin: 0.35rem 0 0.75rem;
+}
+
+.wizard-intro-lead {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+}
+
+.wizard-facts {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.75rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.wizard-facts li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.wizard-fact-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.btn-wizard-start {
+  min-height: 56px;
+  font-size: 1.15rem;
+  padding-inline: 2.5rem;
+  width: 100%;
+}
+
+.wizard-intro-note {
+  margin: 1.25rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+/* --- progress ------------------------------------------------------------- */
+.wizard-progress {
+  margin-bottom: 1.75rem;
+}
+
+.wizard-progress-label {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.wizard-progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.wizard-progress-fill {
+  height: 100%;
+  width: 20%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-2));
+  transition: width 0.25s ease;
+}
+
+/* --- error summary -------------------------------------------------------- */
+.wizard-errors {
+  border: 3px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1.75rem;
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+.wizard-errors:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.wizard-errors-title {
+  margin: 0 0 0.6rem;
+  font-size: 1.15rem;
+  color: var(--danger);
+}
+
+.wizard-errors ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.wizard-errors li + li {
+  margin-top: 0.4rem;
+}
+
+.wizard-errors a {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* --- steps ---------------------------------------------------------------- */
+.wizard-step {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.wizard-step-heading {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+  line-height: 1.3;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
+
+.wizard-step-heading:focus {
+  outline: none;
+}
+
+.wizard-step-hint {
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0 0 1.75rem;
+}
+
+.wizard-field {
+  margin-bottom: 1.85rem;
+}
+
+.wizard-field > label {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.wizard-optional {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.wizard-field-hint {
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 0.6rem;
+}
+
+.wizard-field input[type='text'],
+.wizard-field input[type='email'],
+.wizard-field input[type='tel'],
+.wizard-field input[type='url'],
+.wizard-field select,
+.wizard-field textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 0.75rem 0.9rem;
+  font-size: 1.08rem;
+  font-family: inherit;
+  color: var(--text);
+  background-color: var(--surface);
+  border: 2px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.wizard-field textarea {
+  min-height: 150px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.wizard-field input:focus-visible,
+.wizard-field select:focus-visible,
+.wizard-field textarea:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+
+/* Selects hold short values (a state, a town, a county), so a full 720px field
+   overstates the answer and blows the native dropdown up to match. Capping the
+   width keeps the field proportional to its content and the popup readable.
+   The 44px minimum tap target is unaffected. */
+.wizard-field select {
+  max-width: 24rem;
+  min-height: 52px;
+}
+
+/* The wrap takes the cap, so a select with a clear button ends up exactly as
+   wide as the bare State select above it. */
+.wizard-field .select-clear-wrap {
+  max-width: 24rem;
+}
+
+/* Chrome and Firefox render the popup rows at the option's own font size, so
+   this is what actually shrinks a 197-city list to a sane height. */
+.wizard-field select option {
+  font-size: 0.95rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.wizard-field input.has-error,
+.wizard-field select.has-error,
+.wizard-field textarea.has-error {
+  border-color: var(--danger);
+  border-width: 3px;
+}
+
+.wizard-field-error:empty {
+  display: none;
+}
+
+.wizard-field-error {
+  margin: 0.45rem 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.wizard-input-prefix {
+  display: flex;
+  align-items: stretch;
+}
+
+.wizard-input-prefix > span {
+  display: grid;
+  place-items: center;
+  padding-inline: 0.9rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 2px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  border-right: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.wizard-input-prefix > input {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* --- radios --------------------------------------------------------------- */
+.wizard-radio-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.wizard-radio-group > legend {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  padding: 0;
+}
+
+.wizard-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 56px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.6rem;
+  font-size: 1.08rem;
+  background: var(--surface);
+  border: 2px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.wizard-radio:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.wizard-radio input {
+  width: 26px;
+  height: 26px;
+  accent-color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.wizard-radio:has(input:checked) {
+  border-color: var(--primary);
+  border-width: 3px;
+  background: var(--primary-soft);
+  font-weight: 600;
+}
+
+.wizard-radio:has(input:focus-visible) {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* --- checkbox ------------------------------------------------------------- */
+.wizard-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1.1rem;
+  background: var(--surface);
+  border: 2px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+.wizard-checkbox input {
+  width: 26px;
+  height: 26px;
+  margin-top: 0.1rem;
+  accent-color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.wizard-checkbox:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.wizard-checkbox-hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.96rem;
+}
+
+.wizard-sponsor {
+  margin-top: 2.25rem;
+}
+
+/* --- add-a-thing row ------------------------------------------------------ */
+.wizard-add-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.wizard-add-row input {
+  flex: 1 1 auto;
+}
+
+.wizard-add-btn {
+  flex: 0 0 auto;
+  min-height: 52px;
+  min-width: 88px;
+  font-size: 1.05rem;
+}
+
+.wizard-chip-list {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.wizard-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.5rem 0.45rem 0.9rem;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong);
+  border-radius: 999px;
+  font-size: 1rem;
+}
+
+.wizard-chip-remove {
+  min-height: 34px;
+  padding-inline: 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wizard-chip-remove:hover {
+  background: var(--primary);
+  color: var(--btn-on-primary);
+}
+
+/* --- review --------------------------------------------------------------- */
+.wizard-review {
+  margin: 0 0 2rem;
+  border-top: 2px solid var(--header-border);
+}
+
+.wizard-review-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 34%) 1fr;
+  gap: 1rem;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--header-border);
+}
+
+.wizard-review-row dt {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.wizard-review-row dd {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.wizard-review-value {
+  font-size: 1.03rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.wizard-review-change {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding-inline: 0.85rem;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wizard-review-change:hover {
+  background: var(--primary);
+  color: var(--btn-on-primary);
+}
+
+/* --- nav ------------------------------------------------------------------ */
+.wizard-nav {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  margin-top: 2.25rem;
+}
+
+.wizard-nav-btn {
+  min-height: 56px;
+  font-size: 1.1rem;
+  padding-inline: 2rem;
+  flex: 1 1 auto;
+}
+
+#wizardNextBtn,
+#wizardSubmitBtn {
+  order: 2;
+}
+
+#wizardBackBtn {
+  order: 1;
+  flex: 0 1 auto;
+}
+
+.wizard-save-note {
+  margin: 1.25rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* --- done ----------------------------------------------------------------- */
+.wizard-done {
+  text-align: center;
+}
+
+.wizard-done:focus {
+  outline: none;
+}
+
+.wizard-done-mark {
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 1.25rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 2.4rem;
+  color: var(--btn-on-primary);
+  background: linear-gradient(145deg, var(--primary), var(--primary-2));
+}
+
+.wizard-done-lead {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.wizard-done-sub {
+  color: var(--muted);
+  margin-bottom: 1.75rem;
+}
+
+.wizard-done-actions {
+  display: flex;
+  gap: 0.85rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.wizard-done-actions .btn {
+  min-height: 52px;
+  font-size: 1.05rem;
+  padding-inline: 1.75rem;
+}
+
+@media (max-width: 640px) {
+  .wizard-intro,
+  .wizard-card,
+  .wizard-done {
+    padding: 1.5rem 1.15rem;
+  }
+
+  /* Keep the brand on one line: shorten the back link rather than wrap it. */
+  .btn-header-back {
+    font-size: 0.85rem;
+    padding-inline: 0.7rem;
+    white-space: nowrap;
+  }
+
+  body[data-page='request-listing'] .brand span {
+    font-size: 1rem;
+  }
+
+  .wizard-review-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .wizard-nav-btn {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+}
+
+/* ==========================================================================
+   Job requests queue (/review-requests) + sponsored placement
+   ========================================================================== */
+
+/* --- settings menu badge --------------------------------------------------- */
+.settings-link-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 0.5rem;
+  padding-inline: 0.35rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--btn-on-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* --- toolbar --------------------------------------------------------------- */
+.requests-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.5rem 0 1.75rem;
+}
+
+.requests-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.15rem;
+  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.requests-tab:hover {
+  border-color: var(--primary);
+}
+
+.requests-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--btn-on-primary);
+}
+
+.requests-tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding-inline: 0.35rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.requests-tab.active .requests-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--btn-on-primary);
+}
+
+.requests-refresh {
+  margin-left: auto;
+  min-height: 48px;
+}
+
+.requests-empty {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed color-mix(in srgb, var(--muted) 40%, transparent);
+  border-radius: var(--radius);
+}
+
+/* --- request cards --------------------------------------------------------- */
+.requests-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.request-card {
+  background: var(--grad-card);
+  border: 1px solid var(--header-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.75rem;
+}
+
+.request-card.wants-sponsor {
+  border-left: 5px solid var(--primary);
+}
+
+.request-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.request-org {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.request-role {
+  margin: 0.2rem 0 0;
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.45rem;
+  line-height: 1.3;
+}
+
+.request-when {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.request-sponsor-flag {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.request-description {
+  margin: 0 0 1.25rem;
+  font-size: 1.03rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.request-details {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1.25rem;
+}
+
+.request-detail {
+  display: grid;
+  grid-template-columns: minmax(130px, 26%) 1fr;
+  gap: 0.85rem;
+  align-items: baseline;
+}
+
+.request-detail-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.request-detail-value {
+  font-size: 1.01rem;
+  overflow-wrap: anywhere;
+}
+
+.request-detail-value a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.request-contact {
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.35rem;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.request-contact h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.request-contact .request-details {
+  margin-bottom: 0;
+}
+
+.request-trail {
+  margin: 0 0 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--header-border);
+  font-size: 0.97rem;
+  color: var(--muted);
+}
+
+.request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--header-border);
+}
+
+.request-action-btn {
+  min-height: 52px;
+  font-size: 1.05rem;
+  padding-inline: 1.75rem;
+}
+
+/* --- publish / decline modals ---------------------------------------------- */
+.publish-modal-role {
+  margin: 0 0 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--header-border);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.publish-sponsor-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1.15rem 0;
+  padding: 0.95rem;
+  border: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.99rem;
+  line-height: 1.5;
+}
+
+.publish-sponsor-row input {
+  width: 24px;
+  height: 24px;
+  margin-top: 0.1rem;
+  accent-color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.publish-sponsor-row:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.publish-sponsor-hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.93rem;
+  color: var(--muted);
+}
+
+/* --- sponsored listings on the jobs page ----------------------------------- */
+.job-item-sponsored {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.job-sponsored-flag {
+  display: inline-block;
+  margin: 0 0 0.65rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--btn-on-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .request-card {
+    padding: 1.25rem 1.1rem;
+  }
+
+  .request-detail {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .request-when {
+    white-space: normal;
+  }
+
+  .request-action-btn {
+    width: 100%;
+  }
+
+  .requests-refresh {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   Staff form usability
+   Targeted fixes to the existing Upload modal rather than a redesign: bigger
+   targets, visible hints, and an Add button beside "add one at a time" inputs.
+   ========================================================================== */
+
+.field-optional {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.field-hint {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.field-add-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.field-add-row input {
+  flex: 1 1 auto;
+}
+
+.field-add-btn {
+  flex: 0 0 auto;
+  min-width: 80px;
+  min-height: 44px;
+}
+
+/* WCAG 2.5.5 asks for 44x44 targets. The modal's controls were smaller than
+   that, which is the most common single complaint from less confident users. */
+.modal-card .field input,
+.modal-card .field select,
+.modal-card .auth-form input,
+.modal-card .auth-form select {
+  min-height: 44px;
+}
+
+.modal-card .field select option,
+.modal-card .auth-form select option {
+  font-size: 0.95rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.modal-card .form-actions .btn,
+.modal-card .tab-btn {
+  min-height: 46px;
+}
+
+.benefit-action-btn {
+  min-height: 34px;
+  min-width: 34px;
+}
+
+/* The upload flash message is the only feedback staff get after pressing
+   Create Listing, so it needs to read as a message rather than fine print. */
+.flash:not(:empty) {
+  margin: 0 1.15rem 1.15rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  line-height: 1.5;
+  border-left: 4px solid var(--muted);
+  background: var(--surface-2);
+}
+
+.flash.err:not(:empty) {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.flash.ok:not(:empty) {
+  border-left-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Public "Request Job Listing" button sits beside Upload in the jobs hero. */
+.btn-request-listing {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+.btn-request-listing.hidden {
+  display: none;
+}
+
+/* ==========================================================================
+   Clear button inside the city / county selects
+   Sits within the field, just left of the caret, so a select with a clear
+   button is exactly the same width and height as one without it.
+   ========================================================================== */
+
+.select-clear-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* Room for the clear button plus the native caret drawn by the base select
+   rule, so a long town name never runs underneath either. */
+.select-clear-wrap select {
+  width: 100%;
+  max-width: none;
+  padding-right: 4.3rem;
+}
+
+.select-clear-btn {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  right: 1.65rem;
+  width: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.select-clear-btn:hover {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.select-clear-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+
+.select-clear-btn[hidden] {
+  display: none;
+}
+
+/* ==========================================================================
+   Consistent control sizing
+   .field is a grid, and .form-grid rows take the height of the tallest cell.
+   Without this, a field carrying hint text stretches its neighbour's control:
+   Employment Type was rendering 76px tall next to County's hint line.
+   ========================================================================== */
+
+.field {
+  align-content: start;
+}
+
+.form-grid .field select,
+.form-grid .field input,
+.form-grid .field textarea {
+  align-self: start;
+}
+
+.form-grid .field select,
+.form-grid .field input {
+  height: 47px;
+}
+
+.form-grid .field textarea {
+  min-height: 96px;
+}
+
+/* ==========================================================================
+   Required-field marker
+   The asterisk is aria-hidden and the control carries required/aria-required,
+   so assistive tech announces "required" instead of reading out "asterisk".
+   ========================================================================== */
+
+.required-mark {
+  margin-left: 0.2rem;
+  color: var(--danger);
+  font-weight: 700;
+  /* Hold its own size regardless of the label it sits on. */
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.required-note {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Inside the upload modal the note sits above the tab row. */
+.modal-card .required-note {
+  margin: 0 1.15rem 0.75rem;
+}
+
+.wizard-card .required-note {
+  margin-bottom: 1.25rem;
+}
+
+/* The danger red is tuned for light surfaces; lift it in dark mode so the
+   asterisk keeps its contrast against the darker card. */
+:root[data-theme="dark"] .required-mark {
+  color: #ff8a95;
+}

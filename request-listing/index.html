@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>(function(){try{if(localStorage.getItem('ptaStudentJobHubTheme')==='dark')document.documentElement.setAttribute('data-theme','dark');var s=localStorage.getItem('studentJobHubSchoolTheme');document.documentElement.setAttribute('data-school',s==='uidaho'?'uidaho':'nic');}catch(e){}})();</script>
+    <meta name="description" content="Employers: send us a job listing for students. Free to post." />
+    <title>Student Job Hub | Request a Job Listing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css?v=20260917g" />
+  </head>
+  <body data-page="request-listing">
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="/" aria-label="Student Job Hub home">
+          <img class="brand-mark" src="/assets/jump-vault-logo.png" alt="The Jump Vault" width="38" height="38" />
+          <span>Student Job Hub</span>
+        </a>
+        <a class="btn btn-muted btn-header-back" href="/jobs">View job listings</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="container wizard-shell">
+        <!-- Intro: what this is and what it costs, before any fields -->
+        <section class="wizard-intro" id="wizardIntro">
+          <p class="eyebrow">For employers</p>
+          <h1>Send us a job listing</h1>
+          <p class="wizard-intro-lead">
+            Tell us about the job and we will add it to the Student Job Hub, where
+            local students look for work. <strong>Posting is free.</strong>
+          </p>
+          <ul class="wizard-facts">
+            <li><span class="wizard-fact-icon" aria-hidden="true">1</span> Takes about 5 minutes</li>
+            <li><span class="wizard-fact-icon" aria-hidden="true">2</span> Five short steps, one question at a time</li>
+            <li><span class="wizard-fact-icon" aria-hidden="true">3</span> A staff member checks it before it goes live</li>
+          </ul>
+          <button class="btn btn-primary btn-wizard-start" type="button" id="wizardStartBtn">
+            Start
+          </button>
+          <p class="wizard-intro-note">
+            Already have a listing with us? Email
+            <a href="mailto:jobs@thejumpvault.com">jobs@thejumpvault.com</a> and we will update it.
+          </p>
+        </section>
+
+        <!-- Wizard -->
+        <section class="wizard-card hidden" id="wizardCard" aria-labelledby="wizardStepHeading">
+          <div class="wizard-progress">
+            <p class="wizard-progress-label" id="wizardProgressLabel">Step 1 of 5</p>
+            <div
+              class="wizard-progress-track"
+              role="progressbar"
+              aria-labelledby="wizardProgressLabel"
+              aria-valuemin="1"
+              aria-valuemax="5"
+              aria-valuenow="1"
+              id="wizardProgressBar"
+            >
+              <div class="wizard-progress-fill" id="wizardProgressFill"></div>
+            </div>
+          </div>
+
+          <!-- Error summary: focus lands here on a failed step so the problem is
+               announced and each item jumps to its field. -->
+          <div
+            class="wizard-errors hidden"
+            id="wizardErrorSummary"
+            role="alert"
+            tabindex="-1"
+          >
+            <h2 class="wizard-errors-title">Please check the following</h2>
+            <ul id="wizardErrorList"></ul>
+          </div>
+
+          <p class="required-note"><span class="required-mark" aria-hidden="true">*</span> means we need an answer</p>
+          <form id="requestListingForm" novalidate>
+            <!-- Step 1 — about you -->
+            <fieldset class="wizard-step" data-step="1">
+              <legend class="wizard-step-heading" id="wizardStepHeading">First, how do we reach you?</legend>
+              <p class="wizard-step-hint">
+                We only use this to contact you about this job. It is never shown on the website.
+              </p>
+
+              <div class="wizard-field">
+                <label for="contactName">Your name<span class="required-mark" aria-hidden="true">*</span></label>
+                <input id="contactName" aria-required="true" name="contactName" type="text" autocomplete="name" />
+                <p class="wizard-field-error" id="contactNameError" aria-live="polite"></p>
+              </div>
+
+              <div class="wizard-field">
+                <label for="contactEmail">Your email address<span class="required-mark" aria-hidden="true">*</span></label>
+                <p class="wizard-field-hint" id="contactEmailHint">We will be in touch about your listing.</p>
+                <input
+                  id="contactEmail" aria-required="true"
+                  name="contactEmail"
+                  type="email"
+                  autocomplete="email"
+                  aria-describedby="contactEmailHint"
+                />
+                <p class="wizard-field-error" id="contactEmailError" aria-live="polite"></p>
+              </div>
+
+              <div class="wizard-field">
+                <label for="contactPhone">Your phone number <span class="wizard-optional">(optional)</span></label>
+                <p class="wizard-field-hint" id="contactPhoneHint">Just type the 10 digits &mdash; we add the brackets and dashes.</p>
+                <input
+                  id="contactPhone"
+                  name="contactPhone"
+                  type="tel"
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  maxlength="14"
+                  placeholder="(208) 555-0123"
+                  aria-describedby="contactPhoneHint"
+                />
+                <p class="wizard-field-error" id="contactPhoneError" aria-live="polite"></p>
+              </div>
+            </fieldset>
+
+            <!-- Step 2 — the job -->
+            <fieldset class="wizard-step hidden" data-step="2">
+              <legend class="wizard-step-heading">Job Information</legend>
+
+              <div class="wizard-field">
+                <label for="organization">Business or organization name<span class="required-mark" aria-hidden="true">*</span></label>
+                <input id="organization" aria-required="true" name="organization" type="text" autocomplete="organization" />
+                <p class="wizard-field-error" id="organizationError" aria-live="polite"></p>
+              </div>
+
+              <div class="wizard-field">
+                <label for="role">Job title<span class="required-mark" aria-hidden="true">*</span></label>
+                <p class="wizard-field-hint" id="roleHint">For example: Rehab Aide, Front Desk Assistant.</p>
+                <input id="role" aria-required="true" name="role" type="text" aria-describedby="roleHint" />
+                <p class="wizard-field-error" id="roleError" aria-live="polite"></p>
+              </div>
+
+              <div class="wizard-field">
+                <label for="details">Describe the job<span class="required-mark" aria-hidden="true">*</span></label>
+                <p class="wizard-field-hint" id="detailsHint">
+                  What the student would do, the hours, and anything they need to already know.
+                  Write it however you like.
+                </p>
+                <textarea id="details" aria-required="true" name="details" rows="7" aria-describedby="detailsHint"></textarea>
+                <p class="wizard-field-error" id="detailsError" aria-live="polite"></p>
+              </div>
+            </fieldset>
+
+            <!-- Step 3 — where and what type -->
+            <fieldset class="wizard-step hidden" data-step="3">
+              <legend class="wizard-step-heading">Where is the job, and what type is it?</legend>
+
+              <div class="wizard-field">
+                <label for="state">State<span class="required-mark" aria-hidden="true">*</span></label>
+                <select id="state" aria-required="true" name="state">
+                  <option value="">Choose a state</option>
+                  <option value="ID">Idaho</option>
+                  <option value="WA">Washington</option>
+                </select>
+                <p class="wizard-field-error" id="stateError" aria-live="polite"></p>
+              </div>
+
+              <!-- City and county both stay disabled until a state is picked, since
+                   neither list means anything without one. Give us either. -->
+              <div class="wizard-field">
+                <label for="city">City or town<span class="required-mark" aria-hidden="true">*</span></label>
+                <p class="wizard-field-hint" id="cityHint">
+                  Give us a city or a county &mdash; whichever you know. You do not need both.
+                </p>
+                <select id="city" name="city" aria-describedby="cityHint" disabled>
+                  <option value="">Choose a state first</option>
+                </select>
+                <p class="wizard-field-error" id="cityError" aria-live="polite"></p>
+              </div>
+
+              <div class="wizard-field">
+                <label for="county">County</label>
+                <p class="wizard-field-hint" id="countyHint">
+                  Fills in on its own when you pick a city. A county on its own is fine too.
+                </p>
+                <select id="county" name="county" aria-describedby="countyHint" disabled>
+                  <option value="">Choose a state first</option>
+                </select>
+                <p class="wizard-field-error" id="countyError" aria-live="polite"></p>
+              </div>
+
+              <!-- Radios, not a dropdown: all options visible, large targets -->
+              <div class="wizard-field">
+                <fieldset class="wizard-radio-group">
+                  <legend>What type of work is it?<span class="required-mark" aria-hidden="true">*</span></legend>
+                  <p class="wizard-field-error" id="typeError" aria-live="polite"></p>
+                  <label class="wizard-radio"><input type="radio" name="type" value="Part-Time" /><span>Part-Time</span></label>
+                  <label class="wizard-radio"><input type="radio" name="type" value="Full-Time" /><span>Full-Time</span></label>
+                  <label class="wizard-radio"><input type="radio" name="type" value="Clinical" /><span>Clinical</span></label>
+                  <label class="wizard-radio"><input type="radio" name="type" value="Internship" /><span>Internship</span></label>
+                </fieldset>
+              </div>
+
+              <div class="wizard-field">
+                <label for="postingUrl">Link to this job on your own website <span class="wizard-optional">(optional)</span></label>
+                <p class="wizard-field-hint" id="postingUrlHint">
+                  If students should apply on your site, paste the address here.
+                </p>
+                <input id="postingUrl" name="postingUrl" type="url" inputmode="url" aria-describedby="postingUrlHint" />
+                <p class="wizard-field-error" id="postingUrlError" aria-live="polite"></p>
+              </div>
+            </fieldset>
+
+            <!-- Step 4 — pay and benefits, all optional -->
+            <fieldset class="wizard-step hidden" data-step="4">
+              <legend class="wizard-step-heading">Pay and benefits</legend>
+              <p class="wizard-step-hint">
+                Every question on this page is optional. Listings that show pay get more
+                interest from students, but you can skip this and continue.
+              </p>
+
+              <div class="wizard-field">
+                <label for="pay">Hourly pay <span class="wizard-optional">(optional)</span></label>
+                <p class="wizard-field-hint" id="payHint">Just the number, for example 22.50</p>
+                <div class="wizard-input-prefix">
+                  <span aria-hidden="true">$</span>
+                  <input id="pay" name="pay" type="text" inputmode="decimal" aria-describedby="payHint" />
+                </div>
+                <p class="wizard-field-error" id="payError" aria-live="polite"></p>
+              </div>
+
+              <div class="wizard-field">
+                <label for="phone">Phone number students can call <span class="wizard-optional">(optional)</span></label>
+                <p class="wizard-field-hint" id="phoneHint">Just type the 10 digits. Leave blank if you would rather they email.</p>
+                <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="(208) 555-0123" aria-describedby="phoneHint" />
+                <p class="wizard-field-error" id="phoneError" aria-live="polite"></p>
+              </div>
+
+              <div class="wizard-field">
+                <label for="benefitInput">Benefits <span class="wizard-optional">(optional)</span></label>
+                <p class="wizard-field-hint" id="benefitHint">
+                  Add them one at a time, for example "Flexible hours". Type one and press Add.
+                </p>
+                <div class="wizard-add-row">
+                  <input id="benefitInput" type="text" aria-describedby="benefitHint" />
+                  <button class="btn btn-muted wizard-add-btn" type="button" id="addBenefitBtn">Add</button>
+                </div>
+                <ul class="wizard-chip-list" id="benefitList" aria-live="polite"></ul>
+              </div>
+
+              <div class="wizard-field wizard-sponsor">
+                <label class="wizard-checkbox">
+                  <input type="checkbox" id="wantsSponsorship" name="wantsSponsorship" />
+                  <span>
+                    <strong>Tell me about featuring this job at the top of the list</strong>
+                    <span class="wizard-checkbox-hint">
+                      Featured listings sit above the others so students see them first.
+                      This is the one paid option. Tick the box and we will be in touch with
+                      the details &mdash; you are not agreeing to pay anything now.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- Step 5 — review -->
+            <fieldset class="wizard-step hidden" data-step="5">
+              <legend class="wizard-step-heading">Check your answers</legend>
+              <p class="wizard-step-hint">
+                Please read this over. Use the Change links to fix anything. Nothing is sent until
+                you press Send my job listing.
+              </p>
+
+              <dl class="wizard-review" id="wizardReview"></dl>
+
+              <div class="wizard-field">
+                <div id="requestCaptcha"></div>
+                <p class="wizard-field-error" id="captchaError" aria-live="polite"></p>
+              </div>
+            </fieldset>
+
+            <!-- Navigation -->
+            <div class="wizard-nav">
+              <button class="btn btn-muted wizard-nav-btn" type="button" id="wizardBackBtn">Go back</button>
+              <button class="btn btn-primary wizard-nav-btn" type="button" id="wizardNextBtn">Continue</button>
+              <button class="btn btn-primary wizard-nav-btn hidden" type="submit" id="wizardSubmitBtn">
+                Send my job listing
+              </button>
+            </div>
+
+            <p class="wizard-save-note" id="wizardSaveNote">
+              Your answers are saved on this device as you go, so you can close this page and come back.
+            </p>
+          </form>
+        </section>
+
+        <!-- Done -->
+        <section class="wizard-done hidden" id="wizardDone" tabindex="-1" aria-labelledby="wizardDoneTitle">
+          <div class="wizard-done-mark" aria-hidden="true">&check;</div>
+          <h1 id="wizardDoneTitle">Thank you &mdash; we have your job listing</h1>
+          <p class="wizard-done-lead" id="wizardDoneLead">
+            A staff member will read it and put it on the website. We will be in touch.
+          </p>
+          <p class="wizard-done-sub">
+            Nothing else is needed from you right now. You can close this page.
+          </p>
+          <div class="wizard-done-actions">
+            <a class="btn btn-primary" href="/jobs">See the job listings</a>
+            <a class="btn btn-muted" href="/">Back to the home page</a>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <small>Student Job Hub | <span data-year></span></small>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+    <script src="/location-data.js?v=20260917g"></script>
+    <script src="/app-config.js?v=20260917g"></script>
+    <script src="/script.js?v=20260917g"></script>
+  </body>
+</html>

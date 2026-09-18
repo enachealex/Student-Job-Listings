@@ -49,6 +49,8 @@ function createLocalDevSession() {
       user_metadata: {
         first_name: 'Local',
         last_name: 'Dev',
+      },
+      app_metadata: {
         can_manage_users: true,
       },
     },
@@ -89,6 +91,10 @@ function isChangePasswordPage() {
 
 function isAdminUsersPage() {
   return getPathname() === '/admin-users';
+}
+
+function isReviewRequestsPage() {
+  return getPathname() === '/review-requests';
 }
 
 
@@ -193,6 +199,7 @@ async function initTeacherAuth() {
   const authActionButton = document.getElementById('authActionButton');
   const settingsUserStatus = document.getElementById('settingsUserStatus');
   const manageUsersButton = document.getElementById('manageUsersButton');
+  const reviewRequestsButton = document.getElementById('reviewRequestsButton');
   const profileButton = document.getElementById('profileButton');
   const hasSettingsUi = Boolean(authActionButton && settingsUserStatus);
 
@@ -209,7 +216,13 @@ async function initTeacherAuth() {
     }
     if (manageUsersButton) {
       manageUsersButton.classList.toggle('hidden',
-        !teacherAuthState.isAdmin && !teacherAuthState.session?.user?.user_metadata?.can_manage_users);
+        !teacherAuthState.isAdmin && !teacherAuthState.session?.user?.app_metadata?.can_manage_users);
+    }
+    // Any signed-in staff member can review employer requests — the same people
+    // who can add listings directly.
+    if (reviewRequestsButton) {
+      reviewRequestsButton.classList.toggle('hidden', !isSignedIn);
+      if (isSignedIn) refreshPendingRequestCount();
     }
 
     if (settingsUserStatus) {
@@ -298,8 +311,15 @@ async function initTeacherAuth() {
     }
 
     if (isAdminUsersPage() && (!teacherAuthState.isAuthenticated ||
-        (!teacherAuthState.isAdmin && !session?.user?.user_metadata?.can_manage_users))) {
+        (!teacherAuthState.isAdmin && !session?.user?.app_metadata?.can_manage_users))) {
       globalThis.location.href = '/';
+      return;
+    }
+
+    // The queue holds employer contact details and unreviewed public text, so
+    // it is staff-only. RLS enforces this server-side; this is just the redirect.
+    if (isReviewRequestsPage() && !teacherAuthState.isAuthenticated) {
+      globalThis.location.href = '/login';
       return;
     }
 
@@ -662,7 +682,201 @@ function initChangePasswordPage() {
 
 function canAccessUserManagement(authState) {
   if (!authState.configured || !authState.session) return false;
-  return authState.isAdmin || Boolean(authState.session.user?.user_metadata?.can_manage_users);
+  return authState.isAdmin || Boolean(authState.session.user?.app_metadata?.can_manage_users);
+}
+
+// Shared state -> city/county dropdown behaviour, used by both the staff
+// Upload form and the public employer wizard.
+//
+// Rules:
+//   * City and county stay disabled until a state is chosen — neither list
+//     means anything without one.
+//   * Choosing a city fills in its county automatically.
+//   * Choosing a county narrows the city list to that county's cities.
+//   * Either city or county is enough; callers enforce that in validation.
+function createLocationPicker({ stateSelect, citySelect, countySelect, placeholder = 'Select' }) {
+  if (!stateSelect || !citySelect) {
+    return null;
+  }
+
+  const helpers = globalThis.LOCATION_HELPERS;
+  if (!helpers) {
+    return null;
+  }
+
+  const fill = (select, values, blankLabel) => {
+    select.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = blankLabel;
+    select.append(blank);
+    values.forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      select.append(option);
+    });
+  };
+
+  const setDisabled = (disabled) => {
+    citySelect.disabled = disabled;
+    if (countySelect) countySelect.disabled = disabled;
+  };
+
+  // A clear button beside each select, so a wrong pick can be undone without
+  // hunting for the blank row at the top of a 197-item list.
+  const addClearButton = (select, label) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'select-clear-wrap';
+    select.parentNode.insertBefore(wrap, select);
+    wrap.append(select);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'select-clear-btn';
+    button.textContent = '×';
+    button.setAttribute('aria-label', `Clear ${label}`);
+    button.title = `Clear ${label}`;
+    wrap.append(button);
+
+    const sync = () => {
+      button.hidden = !select.value || select.disabled;
+    };
+
+    button.addEventListener('click', () => {
+      select.value = '';
+      // Let the picker's own change handlers run: clearing the county has to
+      // widen the city list back out again.
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      sync();
+      select.focus();
+    });
+
+    select.addEventListener('change', sync);
+    sync();
+    return sync;
+  };
+
+  const syncCityClear = addClearButton(citySelect, 'city');
+  const syncCountyClear = countySelect ? addClearButton(countySelect, 'county') : () => {};
+
+  // refresh() and the city/county handlers set values in code, which does not
+  // fire change, so the buttons have to be re-synced explicitly.
+  const syncClearButtons = () => {
+    syncCityClear();
+    syncCountyClear();
+  };
+
+  // Repopulate both lists for the current state, keeping the passed values when
+  // they are still valid. Used on state change and when loading a job to edit.
+  const refresh = ({ city = '', county = '' } = {}) => {
+    const state = stateSelect.value;
+
+    if (!state) {
+      fill(citySelect, [], 'Select state first');
+      if (countySelect) fill(countySelect, [], 'Select state first');
+      setDisabled(true);
+      syncClearButtons();
+      return;
+    }
+
+    const counties = helpers.countiesFor(state);
+    const validCounty = counties.includes(county) ? county : '';
+
+    fill(citySelect, helpers.citiesFor(state, validCounty), `${placeholder} city`);
+    if (countySelect) fill(countySelect, counties, `${placeholder} county`);
+
+    setDisabled(false);
+
+    const validCity = helpers.countyForCity(state, city) ? city : '';
+    citySelect.value = validCity;
+    if (countySelect) {
+      // A city always wins: its county is a fact, not a preference.
+      countySelect.value = validCity ? helpers.countyForCity(state, validCity) : validCounty;
+    }
+
+    syncClearButtons();
+  };
+
+  stateSelect.addEventListener('change', () => refresh());
+
+  // Setting .value in code does not fire change, so these cannot loop.
+  citySelect.addEventListener('change', () => {
+    if (!countySelect) return;
+    const city = citySelect.value;
+    if (city) {
+      countySelect.value = helpers.countyForCity(stateSelect.value, city);
+    }
+    syncClearButtons();
+  });
+
+  countySelect?.addEventListener('change', () => {
+    const state = stateSelect.value;
+    const county = countySelect.value;
+    const previousCity = citySelect.value;
+
+    fill(citySelect, helpers.citiesFor(state, county), `${placeholder} city`);
+    // Keep the city only if it is actually in the county they just picked.
+    citySelect.value = county && helpers.countyForCity(state, previousCity) !== county
+      ? ''
+      : previousCity;
+    syncClearButtons();
+  });
+
+  return {
+    refresh,
+    get city() { return citySelect.value; },
+    get county() { return countySelect ? countySelect.value : ''; },
+  };
+}
+
+// "Coeur d'Alene, ID" when there is a city, "Kootenai County, ID" when the
+// employer only knew the county. Falls back to whichever part exists.
+function buildLocationLabel(city, county, state) {
+  const place = (city || '').trim() || ((county || '').trim() ? `${county.trim()} County` : '');
+  const st = (state || '').trim();
+  if (place && st) return `${place}, ${st}`;
+  return place || st || 'Location';
+}
+
+// US phone formatting shared by the staff form and the employer wizard.
+// Caps at 10 digits and formats progressively as the field is typed into:
+// "(208", "(208) 555", "(208) 555-0123". Never produces a trailing character
+// that a backspace would immediately re-add, which would make delete feel stuck.
+function formatUsPhone(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+
+  // A pasted "1-208-555-0123" is a country code plus 10 digits, not 11 digits
+  // of number — drop the 1 rather than truncating the last digit away.
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1);
+  }
+  digits = digits.slice(0, 10);
+
+  if (digits.length === 0) return '';
+  if (digits.length < 4) return `(${digits}`;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+}
+
+// Digits only, for validation and for deciding whether the field is complete.
+function phoneDigits(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+  return digits.slice(0, 10);
+}
+
+// Reformats a phone input on every keystroke and on paste.
+function attachPhoneFormatting(input) {
+  if (!input) return;
+  const apply = () => { input.value = formatUsPhone(input.value); };
+  input.addEventListener('input', apply);
+  input.addEventListener('paste', (event) => {
+    event.preventDefault();
+    const pasted = (event.clipboardData || globalThis.clipboardData)?.getData('text') || '';
+    input.value = formatUsPhone(pasted);
+  });
+  input.addEventListener('blur', apply);
 }
 
 function escapeHtml(str) {
@@ -1397,6 +1611,7 @@ function initJobsModal() {
   const detailsModal = document.getElementById('jobDetailsModal');
 
   const openBtn = document.getElementById('openUpload');
+  const requestListingLink = document.getElementById('requestListingLink');
   const postJobListingsBtn = document.getElementById('postJobListingsBtn');
   const quickGuideWrap = document.querySelector('.guide-tooltip-wrap');
   const teacherAccessNotice = document.getElementById('teacherAccessNotice');
@@ -1418,8 +1633,10 @@ function initJobsModal() {
   const benefitsEditorList = document.getElementById('benefitsEditorList');
   const urlStateSelect = document.getElementById('urlState');
   const urlCitySelect = document.getElementById('urlCity');
+  const urlCountySelect = document.getElementById('urlCounty');
   const templateStateSelect = document.getElementById('state');
   const templateCitySelect = document.getElementById('city');
+  const templateCountySelect = document.getElementById('county');
   const detailsCloseBtn = document.getElementById('closeJobDetails');
   const editJobDetailsBtn = document.getElementById('editJobDetails');
   const deleteJobDetailsBtn = document.getElementById('deleteJobDetails');
@@ -1525,10 +1742,6 @@ function initJobsModal() {
   const organizationInput = document.getElementById('organization');
   const descriptionInput = document.getElementById('description');
 
-  const stateCityOptions = {
-    ID: ['Aberdeen', 'Acequia', 'Albion', 'American Falls', 'Ammon', 'Arco', 'Arimo', 'Ashton', 'Athol', 'Bancroft', 'Basalt', 'Bellevue', 'Blackfoot', 'Bliss', 'Bloomington', 'Boise', 'Bonners Ferry', 'Bovill', 'Buhl', 'Burley', 'Butte City', 'Caldwell', 'Cambridge', 'Carey', 'Cascade', 'Castleford', 'Challis', 'Chubbuck', 'Clark Fork', 'Clayton', 'Clifton', 'Coeur d\'Alene', 'Cottonwood', 'Council', 'Craigmont', 'Crouch', 'Culdesac', 'Dalton Gardens', 'Dayton', 'Deary', 'Declo', 'Dietrich', 'Donnelly', 'Dover', 'Downey', 'Driggs', 'Drummond', 'Dubois', 'Eagle', 'East Hope', 'Eden', 'Elk River', 'Emmett', 'Fairfield', 'Ferdinand', 'Fernan Lake Village', 'Filer', 'Firth', 'Franklin', 'Fruitland', 'Garden City', 'Genesee', 'Georgetown', 'Glenns Ferry', 'Gooding', 'Grace', 'Grand View', 'Grangeville', 'Greenleaf', 'Hagerman', 'Hailey', 'Hansen', 'Harrison', 'Hauser', 'Hayden', 'Hayden Lake', 'Hazelton', 'Heyburn', 'Hollister', 'Homedale', 'Hope', 'Horseshoe Bend', 'Huetter', 'Idaho City', 'Idaho Falls', 'Inkom', 'Iona', 'Irwin', 'Island Park', 'Jerome', 'Juliaetta', 'Kamiah', 'Kellogg', 'Kendrick', 'Ketchum', 'Kimberly', 'Kooskia', 'Kootenai', 'Kuna', 'Lapwai', 'Lava Hot Springs', 'Leadore', 'Lewiston', 'Lewisville', 'Lost River', 'Mackay', 'Malad City', 'Malta', 'Marsing', 'McCall', 'McCammon', 'Melba', 'Menan', 'Meridian', 'Midvale', 'Middleton', 'Minidoka', 'Montpelier', 'Moore', 'Moscow', 'Mountain Home', 'Moyie Springs', 'Mud Lake', 'Mullan', 'Murtaugh', 'Nampa', 'Nezperce', 'New Meadows', 'New Plymouth', 'Newdale', 'Notus', 'Oakley', 'Oldtown', 'Onaway', 'Orofino', 'Osburn', 'Oxford', 'Paris', 'Parma', 'Paul', 'Payette', 'Peck', 'Pierce', 'Pinehurst', 'Placerville', 'Plummer', 'Pocatello', 'Ponderay', 'Post Falls', 'Potlatch', 'Preston', 'Priest River', 'Rathdrum', 'Reubens', 'Rexburg', 'Richfield', 'Rigby', 'Riggins', 'Ririe', 'Roberts', 'Rockland', 'Rupert', 'St. Anthony', 'St. Charles', 'St. Maries', 'Salmon', 'Sandpoint', 'Shelley', 'Shoshone', 'Smelterville', 'Soda Springs', 'Spirit Lake', 'Spencer', 'Stanley', 'Star', 'State Line', 'Stites', 'Sugar City', 'Sun Valley', 'Swan Valley', 'Tensed', 'Tetonia', 'Teton', 'Troy', 'Twin Falls', 'Ucon', 'Victor', 'Wallace', 'Warm River', 'Weippe', 'Weiser', 'Wendell', 'Weston', 'White Bird', 'Wilder', 'Winchester', 'Worley'],
-    WA: ['Aberdeen', 'Airway Heights', 'Albion', 'Algona', 'Almira', 'Anacortes', 'Arlington', 'Asotin', 'Auburn', 'Bainbridge Island', 'Battle Ground', 'Beaux Arts Village', 'Bellevue', 'Bellingham', 'Benton City', 'Bingen', 'Black Diamond', 'Blaine', 'Bonney Lake', 'Bothell', 'Bremerton', 'Brewster', 'Bridgeport', 'Brier', 'Buckley', 'Bucoda', 'Burien', 'Burlington', 'Camas', 'Carbonado', 'Carnation', 'Cashmere', 'Castle Rock', 'Cathlamet', 'Centralia', 'Chehalis', 'Chelan', 'Cheney', 'Chewelah', 'Clarkston', 'Cle Elum', 'Clyde Hill', 'Colfax', 'College Place', 'Colton', 'Colville', 'Conconully', 'Concrete', 'Connell', 'Cosmopolis', 'Coulee City', 'Coulee Dam', 'Coupeville', 'Covington', 'Creston', 'Cusick', 'Darrington', 'Davenport', 'Dayton', 'Deer Park', 'Des Moines', 'DuPont', 'Duvall', 'East Wenatchee', 'Eatonville', 'Edgewood', 'Edmonds', 'Electric City', 'Ellensburg', 'Elma', 'Elmer City', 'Endicott', 'Entiat', 'Enumclaw', 'Ephrata', 'Everett', 'Everson', 'Fairfield', 'Farmington', 'Federal Way', 'Ferndale', 'Fife', 'Fircrest', 'Forks', 'Friday Harbor', 'Garfield', 'George', 'Gig Harbor', 'Gold Bar', 'Goldendale', 'Grand Coulee', 'Grandview', 'Granger', 'Granite Falls', 'Hamilton', 'Harrah', 'Harrington', 'Hartline', 'Hatton', 'Hoquiam', 'Hunts Point', 'Ilwaco', 'Index', 'Ione', 'Issaquah', 'Kahlotus', 'Kalama', 'Kelso', 'Kenmore', 'Kennewick', 'Kent', 'Kettle Falls', 'Kirkland', 'Kittitas', 'Krupp', 'La Center', 'La Conner', 'LaCrosse', 'Lacey', 'Lake Forest Park', 'Lake Stevens', 'Lakewood', 'Lamont', 'Langley', 'Latah', 'Leavenworth', 'Liberty Lake', 'Lind', 'Long Beach', 'Longview', 'Lyman', 'Lynden', 'Lynnwood', 'Mabton', 'Malden', 'Mansfield', 'Maple Valley', 'Marcus', 'Marysville', 'Mattawa', 'McCleary', 'Medical Lake', 'Medina', 'Mercer Island', 'Mesa', 'Metaline', 'Metaline Falls', 'Mill Creek', 'Millwood', 'Milton', 'Monroe', 'Montesano', 'Morton', 'Moses Lake', 'Mossyrock', 'Mount Vernon', 'Mountlake Terrace', 'Moxee', 'Mukilteo', 'Naches', 'Napavine', 'Nespelem', 'Newcastle', 'Newport', 'Nooksack', 'Normandy Park', 'North Bend', 'North Bonneville', 'Northport', 'Oak Harbor', 'Oakesdale', 'Oakville', 'Ocean Shores', 'Odessa', 'Okanogan', 'Olympia', 'Omak', 'Oroville', 'Orting', 'Othello', 'Pacific', 'Palouse', 'Pasco', 'Pateros', 'Pe Ell', 'Pomeroy', 'Port Angeles', 'Port Orchard', 'Port Townsend', 'Poulsbo', 'Prescott', 'Prosser', 'Pullman', 'Puyallup', 'Quincy', 'Rainier', 'Raymond', 'Reardan', 'Redmond', 'Renton', 'Republic', 'Richland', 'Ridgefield', 'Ritzville', 'Riverside', 'Rock Island', 'Rockford', 'Rosalia', 'Roslyn', 'Roy', 'Royal City', 'Ruston', 'Sammamish', 'SeaTac', 'Seattle', 'Sedro-Woolley', 'Selah', 'Sequim', 'Shelton', 'Shoreline', 'Skykomish', 'Snohomish', 'Snoqualmie', 'Soap Lake', 'South Bend', 'South Cle Elum', 'South Prairie', 'Spangle', 'Spokane', 'Spokane Valley', 'Sprague', 'Springdale', 'St. John', 'Stanwood', 'Starbuck', 'Steilacoom', 'Stevenson', 'Sultan', 'Sumas', 'Sumner', 'Sunnyside', 'Tacoma', 'Tekoa', 'Tenino', 'Tieton', 'Toledo', 'Tonasket', 'Toppenish', 'Tukwila', 'Tumwater', 'Twisp', 'Union Gap', 'Uniontown', 'University Place', 'Vader', 'Vancouver', 'Waitsburg', 'Walla Walla', 'Wapato', 'Warden', 'Washougal', 'Washtucna', 'Waterville', 'Waverly', 'Wenatchee', 'West Richland', 'Westport', 'White Salmon', 'Wilbur', 'Wilkeson', 'Wilson Creek', 'Winlock', 'Winthrop', 'Woodinville', 'Woodland', 'Woodway', 'Yacolt', 'Yakima', 'Yarrow Point', 'Yelm', 'Zillah'],
-  };
 
   const escapeHtml = (value) => {
     return String(value || '')
@@ -1739,28 +1952,6 @@ function initJobsModal() {
     };
   };
 
-  const buildLocation = (city, state) => {
-    return city && state ? `${city}, ${state}` : city || state || 'Location';
-  };
-
-  const formatPhoneNumber = (value) => {
-    const digits = (value || '').replaceAll(/\D/g, '').slice(0, 10);
-
-    if (digits.length === 0) {
-      return '';
-    }
-
-    if (digits.length < 4) {
-      return `(${digits}`;
-    }
-
-    if (digits.length < 7) {
-      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    }
-
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-  };
-
   const normalizeJob = (job) => {
     const normalizedPay = job.pay === '' || job.pay == null
       ? ''
@@ -1773,9 +1964,14 @@ function initJobsModal() {
       entryMode: job.entryMode || (job.postingUrl ? 'url' : 'template'),
       role: job.role || 'Job Listing',
       organization: job.organization || 'Organization',
-      location: buildLocation(job.city || parsedLocation.city, job.state || parsedLocation.state),
+      location: buildLocationLabel(
+        job.city || parsedLocation.city,
+        job.county || '',
+        job.state || parsedLocation.state,
+      ),
       state: job.state || parsedLocation.state || '',
       city: job.city || parsedLocation.city || '',
+      county: job.county || '',
       type: job.type || 'Listing',
       category: categorySlug,
       details: job.details || 'No additional details provided.',
@@ -1785,7 +1981,17 @@ function initJobsModal() {
       pay: normalizedPay,
       benefits: Array.isArray(job.benefits) ? job.benefits.filter(Boolean) : [],
       postedBy: String(job.postedBy || job.posted_by || '').trim(),
+      isSponsored: Boolean(job.isSponsored),
+      sponsoredUntil: job.sponsoredUntil || null,
     };
+  };
+
+  // A sponsorship that has run out stops counting, without needing a cleanup job.
+  const isSponsorshipActive = (job) => {
+    if (!job?.isSponsored) return false;
+    if (!job.sponsoredUntil) return true;
+    const until = new Date(job.sponsoredUntil);
+    return Number.isNaN(until.getTime()) ? true : until.getTime() > Date.now();
   };
 
   const formatPayDisplay = (pay) => {
@@ -1804,40 +2010,14 @@ function initJobsModal() {
     return Number(Math.max(0, Number(value))).toFixed(2);
   };
 
-  const populateCitySelect = (stateSelect, citySelect, selectedCity = '') => {
-    if (!stateSelect || !citySelect) {
-      return;
-    }
-
-    const state = stateSelect.value;
-    citySelect.innerHTML = '<option value="">Select city</option>';
-
-    if (!state || !stateCityOptions[state]) {
-      citySelect.disabled = true;
-      citySelect.value = '';
-      return;
-    }
-
-    stateCityOptions[state].forEach((city) => {
-      const option = document.createElement('option');
-      option.value = city;
-      option.textContent = city;
-      citySelect.append(option);
-    });
-
-    citySelect.disabled = false;
-    citySelect.value = selectedCity && stateCityOptions[state].includes(selectedCity) ? selectedCity : '';
-  };
-
-  const attachLocationDropdownBehavior = (stateSelect, citySelect) => {
-    if (!stateSelect || !citySelect) {
-      return;
-    }
-
-    stateSelect.addEventListener('change', () => {
-      populateCitySelect(stateSelect, citySelect);
-    });
-  };
+  // Both Upload panels use the shared picker so staff and employers get
+  // identical city/county behaviour.
+  const urlLocationPicker = createLocationPicker({
+    stateSelect: urlStateSelect, citySelect: urlCitySelect, countySelect: urlCountySelect,
+  });
+  const templateLocationPicker = createLocationPicker({
+    stateSelect: templateStateSelect, citySelect: templateCitySelect, countySelect: templateCountySelect,
+  });
 
   const loadStoredJobs = () => {
     try {
@@ -1866,6 +2046,7 @@ function initJobsModal() {
       location: row.location,
       state: row.state,
       city: row.city,
+      county: row.county || '',
       type: row.type,
       category: row.category,
       details: row.details,
@@ -1875,6 +2056,8 @@ function initJobsModal() {
       pay: row.pay == null ? '' : Number(row.pay),
       benefits: Array.isArray(row.benefits) ? row.benefits : [],
       postedBy: row.posted_by || '',
+      isSponsored: row.is_sponsored === true,
+      sponsoredUntil: row.sponsored_until || null,
     });
   };
 
@@ -1887,6 +2070,7 @@ function initJobsModal() {
       location: job.location,
       state: job.state,
       city: job.city,
+      county: job.county || '',
       type: job.type,
       category: job.category,
       details: job.details,
@@ -1896,6 +2080,8 @@ function initJobsModal() {
       pay: job.pay === '' ? null : Number(job.pay),
       benefits: job.benefits || [],
       posted_by: job.postedBy || '',
+      is_sponsored: Boolean(job.isSponsored),
+      sponsored_until: job.sponsoredUntil || null,
       created_by: teacherAuthState.session?.user?.id || null,
     };
   };
@@ -1905,16 +2091,22 @@ function initJobsModal() {
       return null;
     }
 
-    const { data, error } = await teacherAuthState.supabase
-      .from('jobs')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await teacherAuthState.supabase
+        .from('jobs')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error || !Array.isArray(data)) {
+      if (error || !Array.isArray(data)) {
+        console.warn('Unable to load remote jobs; keeping local listings.', error?.message || error);
+        return null;
+      }
+
+      return data.map((row) => mapDbRowToJob(row));
+    } catch (error) {
+      console.warn('Remote jobs request failed; keeping local listings.', error);
       return null;
     }
-
-    return data.map((row) => mapDbRowToJob(row));
   };
 
   const persistRemoteJob = async (job) => {
@@ -1955,6 +2147,7 @@ function initJobsModal() {
     item.dataset.location = jobData.location;
     item.dataset.state = jobData.state || '';
     item.dataset.city = jobData.city || '';
+    item.dataset.county = jobData.county || '';
     item.dataset.type = jobData.type;
     item.dataset.category = jobData.category;
     item.dataset.details = jobData.details;
@@ -2001,6 +2194,7 @@ function initJobsModal() {
       location,
       state: item.dataset.state || parsedLocation.state,
       city: item.dataset.city || parsedLocation.city,
+      county: item.dataset.county || '',
       type,
       category: item.dataset.category || 'pta',
       details,
@@ -2056,10 +2250,15 @@ function initJobsModal() {
   const resetJobForms = () => {
     urlForm.reset();
     templateForm.reset();
+    // form.reset() clears the state <select> without firing a change event, so
+    // the dependent city/county lists have to be rebuilt by hand — otherwise
+    // they keep the previous state's options and stay enabled.
+    urlLocationPicker?.refresh();
+    templateLocationPicker?.refresh();
     benefitItems = [];
     editingBenefitIndex = null;
     if (benefitInput) {
-      benefitInput.placeholder = 'Type a benefit and press Enter';
+      benefitInput.placeholder = 'Flexible hours';
     }
     if (benefitsEditorList) {
       benefitsEditorList.innerHTML = '';
@@ -2106,7 +2305,7 @@ function initJobsModal() {
     }
 
     benefitInput.value = '';
-    benefitInput.placeholder = 'Type a benefit and press Enter';
+    benefitInput.placeholder = 'Flexible hours';
     renderBenefitsEditor();
   };
 
@@ -2134,11 +2333,19 @@ function initJobsModal() {
       : job.details;
 
     item.className = 'job-item reveal';
+    const sponsored = isSponsorshipActive(job);
+    if (sponsored) {
+      item.classList.add('job-item-sponsored');
+    }
     const postedByHtml = job.postedBy
       ? `<p class="job-posted-by">Posted by ${escapeHtml(job.postedBy)}</p>`
       : '';
+    const sponsoredHtml = sponsored
+      ? '<p class="job-sponsored-flag">Featured</p>'
+      : '';
 
     item.innerHTML = `
+      ${sponsoredHtml}
       <div class="job-item-head">
         <div class="job-heading-stack">
           <p class="job-organization">${escapeHtml(job.organization)}</p>
@@ -2326,6 +2533,14 @@ function initJobsModal() {
     const compareText = (left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' });
 
     jobs = [...jobs].sort((left, right) => {
+      // Sponsored placement is what employers pay for, so it outranks the
+      // chosen sort. Within the sponsored group the normal sort still applies.
+      const leftSponsored = isSponsorshipActive(left);
+      const rightSponsored = isSponsorshipActive(right);
+      if (leftSponsored !== rightSponsored) {
+        return leftSponsored ? -1 : 1;
+      }
+
       if (sortBy === 'role-asc') {
         return compareText(left.role, right.role);
       }
@@ -2520,23 +2735,23 @@ function initJobsModal() {
     document.getElementById('jobUrl').value = job.postingUrl;
     document.getElementById('urlOrganization').value = job.organization;
     urlStateSelect.value = job.state;
-    populateCitySelect(urlStateSelect, urlCitySelect, job.city);
+    urlLocationPicker?.refresh({ city: job.city, county: job.county });
   };
 
   const populateTemplateForm = (job) => {
     document.getElementById('role').value = job.role;
     document.getElementById('organization').value = job.organization;
     templateStateSelect.value = job.state;
-    populateCitySelect(templateStateSelect, templateCitySelect, job.city);
+    templateLocationPicker?.refresh({ city: job.city, county: job.county });
     document.getElementById('employmentType').value = job.type;
     document.getElementById('description').value = job.details;
-    document.getElementById('contactPhone').value = formatPhoneNumber(job.phone);
+    document.getElementById('contactPhone').value = formatUsPhone(job.phone);
     document.getElementById('payRate').value = formatPayInputValue(job.pay);
     benefitItems = [...job.benefits];
     editingBenefitIndex = null;
     if (benefitInput) {
       benefitInput.value = '';
-      benefitInput.placeholder = 'Type a benefit and press Enter';
+      benefitInput.placeholder = 'Flexible hours';
     }
     renderBenefitsEditor();
   };
@@ -2717,6 +2932,12 @@ function initJobsModal() {
       openBtn.disabled = !canManageJobs;
     }
 
+    // Employers only ever see the site signed out, so this is their entry point.
+    // Hidden for staff, who have Upload Job Listing in the same spot.
+    if (requestListingLink) {
+      requestListingLink.classList.toggle('hidden', canManageJobs);
+    }
+
     if (postJobListingsBtn) {
       const showPostJob = Boolean(canManageJobs && authState.isAdmin);
       postJobListingsBtn.classList.toggle('hidden', !showPostJob);
@@ -2871,8 +3092,8 @@ function initJobsModal() {
   renderJobTypeTabs();
   populateJobTypeSelects(activeCategory);
   setActiveJobCategory(activeCategory);
-  attachLocationDropdownBehavior(urlStateSelect, urlCitySelect);
-  attachLocationDropdownBehavior(templateStateSelect, templateCitySelect);
+  urlLocationPicker?.refresh();
+  templateLocationPicker?.refresh();
 
   if (jobsTypeSelectTrigger) {
     jobsTypeSelectTrigger.addEventListener('click', (event) => {
@@ -3104,17 +3325,7 @@ function initJobsModal() {
     });
   });
 
-  if (contactPhoneInput) {
-    contactPhoneInput.addEventListener('input', () => {
-      contactPhoneInput.value = formatPhoneNumber(contactPhoneInput.value);
-    });
-
-    contactPhoneInput.addEventListener('paste', (event) => {
-      event.preventDefault();
-      const pastedText = event.clipboardData?.getData('text') || '';
-      contactPhoneInput.value = formatPhoneNumber(pastedText);
-    });
-  }
+  attachPhoneFormatting(contactPhoneInput);
 
   if (payRateInput) {
     payRateInput.addEventListener('input', () => {
@@ -3152,6 +3363,14 @@ function initJobsModal() {
     });
   }
 
+  const addBenefitStaffBtn = document.getElementById('addBenefitStaffBtn');
+  if (addBenefitStaffBtn) {
+    addBenefitStaffBtn.addEventListener('click', () => {
+      commitBenefitInput();
+      benefitInput?.focus();
+    });
+  }
+
   if (benefitsEditorList) {
     benefitsEditorList.addEventListener('click', (event) => {
       const button = event.target.closest('[data-action]');
@@ -3179,7 +3398,7 @@ function initJobsModal() {
         if (editingBenefitIndex === index) {
           editingBenefitIndex = null;
           benefitInput.value = '';
-          benefitInput.placeholder = 'Type a benefit and press Enter';
+          benefitInput.placeholder = 'Flexible hours';
         }
       }
 
@@ -3199,10 +3418,19 @@ function initJobsModal() {
     const organization = document.getElementById('urlOrganization').value.trim();
     const state = urlStateSelect.value;
     const city = urlCitySelect.value;
-    const location = buildLocation(city, state);
+    const county = urlCountySelect?.value || '';
+    const location = buildLocationLabel(city, county, state);
 
-    if (!role || !url || !organization || !state || !city) {
-      showFlash('Please add a job title, job URL, organization name, state, and city.', 'err');
+    const missingUrlFields = [
+      [role, 'Job Title'],
+      [url, 'Job Posting URL'],
+      [organization, 'Organization'],
+      [state, 'State'],
+      [city || county, 'City or County'],
+    ].filter(([value]) => !value).map(([, label]) => label);
+
+    if (missingUrlFields.length > 0) {
+      showFlash(`Please fill in: ${missingUrlFields.join(', ')}.`, 'err');
       return;
     }
 
@@ -3215,6 +3443,7 @@ function initJobsModal() {
         location,
         state,
         city,
+        county,
         type: 'URL',
         category: getCategoryForSave(),
         details: url,
@@ -3231,7 +3460,7 @@ function initJobsModal() {
       showFlash(editingJobId ? 'URL listing updated successfully.' : 'URL listing added successfully. You can publish another one.', 'ok');
       openDetailsModal(savedJob);
     } catch {
-      showFlash('Unable to save URL listing. Verify teacher permissions and Supabase setup.', 'err');
+      showFlash('We could not save this listing. Check your internet connection and try again. If it keeps happening, sign out and sign back in.', 'err');
     }
   });
 
@@ -3247,14 +3476,24 @@ function initJobsModal() {
     const organization = document.getElementById('organization').value.trim();
     const state = templateStateSelect.value;
     const city = templateCitySelect.value;
-    const location = buildLocation(city, state);
+    const county = templateCountySelect?.value || '';
+    const location = buildLocationLabel(city, county, state);
     const type = document.getElementById('employmentType').value;
     const details = document.getElementById('description').value.trim();
-    const phone = formatPhoneNumber(document.getElementById('contactPhone').value);
+    const phone = formatUsPhone(document.getElementById('contactPhone').value);
     const payValue = payRateInput.value === '' ? '' : Math.max(0, Number(payRateInput.value) || 0);
 
-    if (!role || !organization || !state || !city || !type || !details) {
-      showFlash('Please complete all template fields before posting.', 'err');
+    const missing = [
+      [role, 'Role Title'],
+      [organization, 'Organization'],
+      [state, 'State'],
+      [city || county, 'City or County'],
+      [type, 'Employment Type'],
+      [details, 'Job Description'],
+    ].filter(([value]) => !value).map(([, label]) => label);
+
+    if (missing.length > 0) {
+      showFlash(`Please fill in: ${missing.join(', ')}.`, 'err');
       return;
     }
 
@@ -3267,6 +3506,7 @@ function initJobsModal() {
         location,
         state,
         city,
+        county,
         type,
         category: getCategoryForSave(),
         details,
@@ -3283,9 +3523,1104 @@ function initJobsModal() {
       showFlash(editingJobId ? 'Listing updated successfully.' : 'Template listing created. It now appears in current listings.', 'ok');
       openDetailsModal(savedJob);
     } catch {
-      showFlash('Unable to save template listing. Verify teacher permissions and Supabase setup.', 'err');
+      showFlash('We could not save this listing. Check your internet connection and try again. If it keeps happening, sign out and sign back in.', 'err');
     }
   });
+}
+
+// Public employer wizard at /request-listing.
+//
+// Deliberately one topic per screen. GOV.UK's "one thing per page" pattern is
+// aimed at exactly this audience: a stranger, on a phone, filling this in once.
+// The staff-facing form in initJobsModal stays a single page because staff use
+// it often and paging would slow them down.
+function initRequestListingWizard() {
+  const form = document.getElementById('requestListingForm');
+  const card = document.getElementById('wizardCard');
+  const intro = document.getElementById('wizardIntro');
+  const done = document.getElementById('wizardDone');
+  if (!form || !card || !intro || !done) {
+    return;
+  }
+
+  const startBtn = document.getElementById('wizardStartBtn');
+  const backBtn = document.getElementById('wizardBackBtn');
+  const nextBtn = document.getElementById('wizardNextBtn');
+  const submitBtn = document.getElementById('wizardSubmitBtn');
+  const progressLabel = document.getElementById('wizardProgressLabel');
+  const progressBar = document.getElementById('wizardProgressBar');
+  const progressFill = document.getElementById('wizardProgressFill');
+  const errorSummary = document.getElementById('wizardErrorSummary');
+  const errorList = document.getElementById('wizardErrorList');
+  const reviewList = document.getElementById('wizardReview');
+  const benefitInput = document.getElementById('benefitInput');
+  const addBenefitBtn = document.getElementById('addBenefitBtn');
+  const benefitList = document.getElementById('benefitList');
+  const locationPicker = createLocationPicker({
+    stateSelect: document.getElementById('state'),
+    citySelect: document.getElementById('city'),
+    countySelect: document.getElementById('county'),
+    placeholder: 'Choose',
+  });
+
+  const steps = Array.from(form.querySelectorAll('.wizard-step'));
+  const totalSteps = steps.length;
+  const draftKey = 'jumpVaultListingRequestDraft';
+
+  let currentStep = 1;
+  let benefits = [];
+  let isSubmitting = false;
+
+  const fieldIds = [
+    'contactName', 'contactEmail', 'contactPhone',
+    'organization', 'role', 'details',
+    'state', 'city', 'county', 'postingUrl',
+    'pay', 'phone',
+  ];
+
+  const getField = (id) => document.getElementById(id);
+
+  const getSelectedType = () => form.querySelector('input[name="type"]:checked')?.value || '';
+
+  // --- forgiving input helpers -------------------------------------------
+  // NN/g on older and less confident users: never reject an answer just because
+  // of punctuation. Take whatever they type and tidy it ourselves.
+  const normalizePay = (raw) => {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    // Accept "$22.50", "22.50/hr", "22,50" and similar.
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    if (!cleaned) return '';
+    const number = Number(cleaned);
+    return Number.isFinite(number) && number >= 0 ? String(number) : '';
+  };
+
+  const normalizeUrl = (raw) => {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  };
+
+  // Money on the review page reads as money: $22.50, not $22.5.
+  const formatPayForReview = (raw) => {
+    const normalized = normalizePay(raw);
+    if (normalized === '') return 'Not given';
+    return `$${Number(normalized).toFixed(2)}`;
+  };
+
+  // --- draft persistence --------------------------------------------------
+  const readForm = () => {
+    const data = {};
+    fieldIds.forEach((id) => {
+      data[id] = getField(id)?.value || '';
+    });
+    data.type = getSelectedType();
+    data.wantsSponsorship = Boolean(getField('wantsSponsorship')?.checked);
+    data.benefits = [...benefits];
+    return data;
+  };
+
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ step: currentStep, data: readForm() }));
+    } catch {
+      // Private mode or full storage — the form still works, it just will not resume.
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {
+      // Ignore.
+    }
+  };
+
+  const restoreDraft = () => {
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(draftKey) || 'null');
+    } catch {
+      return false;
+    }
+    if (!saved || typeof saved.data !== 'object' || saved.data === null) {
+      return false;
+    }
+
+    fieldIds.forEach((id) => {
+      const field = getField(id);
+      if (field && typeof saved.data[id] === 'string') {
+        field.value = saved.data[id];
+      }
+    });
+
+    if (saved.data.type) {
+      const radio = form.querySelector(`input[name="type"][value="${CSS.escape(saved.data.type)}"]`);
+      if (radio) radio.checked = true;
+    }
+    const sponsor = getField('wantsSponsorship');
+    if (sponsor) sponsor.checked = saved.data.wantsSponsorship === true;
+
+    // State must be applied before the dependent lists can be rebuilt.
+    locationPicker?.refresh({ city: saved.data.city || '', county: saved.data.county || '' });
+
+    benefits = Array.isArray(saved.data.benefits) ? saved.data.benefits.slice(0, 25) : [];
+    renderBenefits();
+
+    currentStep = Number(saved.step) > 0 && Number(saved.step) <= totalSteps ? Number(saved.step) : 1;
+    return true;
+  };
+
+  // --- benefits chips -----------------------------------------------------
+  function renderBenefits() {
+    if (!benefitList) return;
+    benefitList.innerHTML = '';
+    benefits.forEach((benefit, index) => {
+      const item = document.createElement('li');
+      item.className = 'wizard-chip';
+
+      const text = document.createElement('span');
+      text.textContent = benefit;
+      item.append(text);
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'wizard-chip-remove';
+      remove.setAttribute('aria-label', `Remove ${benefit}`);
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => {
+        benefits.splice(index, 1);
+        renderBenefits();
+        saveDraft();
+        benefitInput?.focus();
+      });
+      item.append(remove);
+
+      benefitList.append(item);
+    });
+  }
+
+  const addBenefit = () => {
+    const value = (benefitInput?.value || '').trim();
+    if (!value) {
+      benefitInput?.focus();
+      return;
+    }
+    if (benefits.length >= 25) return;
+    if (!benefits.includes(value)) benefits.push(value);
+    if (benefitInput) benefitInput.value = '';
+    renderBenefits();
+    saveDraft();
+    benefitInput?.focus();
+  };
+
+  attachPhoneFormatting(getField('contactPhone'));
+  attachPhoneFormatting(getField('phone'));
+
+  addBenefitBtn?.addEventListener('click', addBenefit);
+  // Enter adds the benefit rather than submitting the form — but the Add button
+  // is the documented way, because "press Enter" is invisible to most people.
+  benefitInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addBenefit();
+    }
+  });
+
+  // --- validation ---------------------------------------------------------
+  const setFieldError = (id, message) => {
+    const errorNode = document.getElementById(`${id}Error`);
+    const field = getField(id);
+    if (errorNode) errorNode.textContent = message || '';
+    if (field) {
+      field.classList.toggle('has-error', Boolean(message));
+      if (message) {
+        field.setAttribute('aria-invalid', 'true');
+      } else {
+        field.removeAttribute('aria-invalid');
+      }
+    }
+  };
+
+  const clearErrors = () => {
+    [...fieldIds, 'type', 'captcha'].forEach((id) => setFieldError(id, ''));
+    errorSummary?.classList.add('hidden');
+    if (errorList) errorList.innerHTML = '';
+  };
+
+  const showErrorSummary = (errors) => {
+    if (!errorSummary || !errorList) return;
+    errorList.innerHTML = '';
+
+    errors.forEach(({ id, message }) => {
+      setFieldError(id, message);
+
+      const item = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = `#${id}`;
+      link.textContent = message;
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const target = id === 'type'
+          ? form.querySelector('input[name="type"]')
+          : getField(id);
+        target?.focus();
+        target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+      item.append(link);
+      errorList.append(item);
+    });
+
+    errorSummary.classList.remove('hidden');
+    errorSummary.focus();
+  };
+
+  const validateStep = (step) => {
+    const errors = [];
+    const required = (id, message) => {
+      if (!(getField(id)?.value || '').trim()) errors.push({ id, message });
+    };
+
+    if (step === 1) {
+      required('contactName', 'Enter your name');
+      const contactPhoneValue = (getField('contactPhone')?.value || '').trim();
+      if (contactPhoneValue && phoneDigits(contactPhoneValue).length !== 10) {
+        errors.push({ id: 'contactPhone', message: 'Enter all 10 digits of the phone number, or leave it blank' });
+      }
+      const email = (getField('contactEmail')?.value || '').trim();
+      if (!email) {
+        errors.push({ id: 'contactEmail', message: 'Enter your email address' });
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.push({ id: 'contactEmail', message: 'Enter an email address in the form name@example.com' });
+      }
+    }
+
+    if (step === 2) {
+      required('organization', 'Enter your business or organization name');
+      required('role', 'Enter the job title');
+      required('details', 'Describe the job');
+    }
+
+    if (step === 3) {
+      required('state', 'Choose a state');
+      // Either is enough — some employers only know the county, and some towns
+      // are unincorporated and will not be in the city list.
+      if ((getField('state')?.value || '').trim()
+          && !(getField('city')?.value || '').trim()
+          && !(getField('county')?.value || '').trim()) {
+        errors.push({ id: 'city', message: 'Choose either a city or a county' });
+      }
+      if (!getSelectedType()) {
+        errors.push({ id: 'type', message: 'Choose what type of work this is' });
+      }
+      const url = (getField('postingUrl')?.value || '').trim();
+      if (url && !/^(https?:\/\/)?[^\s.]+\.[^\s]{2,}/i.test(url)) {
+        errors.push({ id: 'postingUrl', message: 'Enter a web address like https://example.com/jobs' });
+      }
+    }
+
+    if (step === 4) {
+      const phoneValue = (getField('phone')?.value || '').trim();
+      if (phoneValue && phoneDigits(phoneValue).length !== 10) {
+        errors.push({ id: 'phone', message: 'Enter all 10 digits of the phone number, or leave it blank' });
+      }
+      const payRaw = (getField('pay')?.value || '').trim();
+      if (payRaw && normalizePay(payRaw) === '') {
+        errors.push({ id: 'pay', message: 'Enter the pay as a number, for example 22.50' });
+      }
+    }
+
+    if (step === 5 && usingRealCaptcha() && !getCaptchaToken()) {
+      errors.push({ id: 'captcha', message: 'Tick the box to confirm you are not a robot' });
+    }
+
+    return errors;
+  };
+
+  // --- captcha ------------------------------------------------------------
+  const captchaContainer = document.getElementById('requestCaptcha');
+  const sitekey = (globalThis.APP_CONFIG?.hcaptchaSitekey || '').trim();
+  const testSitekey = '10000000-ffff-ffff-ffff-000000000001';
+
+  function usingRealCaptcha() {
+    return Boolean(!isLocalDevHost() && sitekey && sitekey !== testSitekey);
+  }
+
+  function getCaptchaToken() {
+    return form.querySelector('[name="h-captcha-response"]')?.value || '';
+  }
+
+  let captchaRendered = false;
+  const renderCaptcha = () => {
+    if (captchaRendered || !captchaContainer || !usingRealCaptcha()) return;
+    captchaContainer.dataset.sitekey = sitekey;
+    captchaContainer.dataset.theme = 'auto';
+    captchaContainer.classList.add('h-captcha');
+    if (globalThis.hcaptcha) {
+      try {
+        globalThis.hcaptcha.render(captchaContainer, { sitekey });
+        captchaRendered = true;
+      } catch {
+        // Auto-render will pick it up from the h-captcha class instead.
+      }
+    }
+  };
+
+  // --- review step --------------------------------------------------------
+  const reviewRows = () => {
+    const value = (id) => (getField(id)?.value || '').trim();
+    const orDash = (text) => text || 'Not given';
+
+    return [
+      { label: 'Your name', value: orDash(value('contactName')), step: 1, field: 'contactName' },
+      { label: 'Your email', value: orDash(value('contactEmail')), step: 1, field: 'contactEmail' },
+      { label: 'Your phone', value: orDash(formatUsPhone(value('contactPhone'))), step: 1, field: 'contactPhone' },
+      { label: 'Organization', value: orDash(value('organization')), step: 2, field: 'organization' },
+      { label: 'Job title', value: orDash(value('role')), step: 2, field: 'role' },
+      { label: 'Description', value: orDash(value('details')), step: 2, field: 'details' },
+      { label: 'Location', value: buildLocationLabel(value('city'), value('county'), value('state')), step: 3, field: 'city' },
+      { label: 'Type of work', value: orDash(getSelectedType()), step: 3, field: 'type' },
+      { label: 'Link to your posting', value: orDash(value('postingUrl')), step: 3, field: 'postingUrl' },
+      { label: 'Hourly pay', value: formatPayForReview(value('pay')), step: 4, field: 'pay' },
+      { label: 'Phone for students', value: orDash(formatUsPhone(value('phone'))), step: 4, field: 'phone' },
+      { label: 'Benefits', value: benefits.length ? benefits.join(', ') : 'None listed', step: 4, field: 'benefitInput' },
+      {
+        label: 'Featured placement',
+        value: getField('wantsSponsorship')?.checked
+          ? 'Yes — send me the details'
+          : 'No thanks',
+        step: 4,
+        field: 'wantsSponsorship',
+      },
+    ];
+  };
+
+  const renderReview = () => {
+    if (!reviewList) return;
+    reviewList.innerHTML = '';
+
+    reviewRows().forEach((row) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'wizard-review-row';
+
+      const dt = document.createElement('dt');
+      dt.textContent = row.label;
+
+      const dd = document.createElement('dd');
+      const text = document.createElement('span');
+      text.className = 'wizard-review-value';
+      text.textContent = row.value;
+      dd.append(text);
+
+      const change = document.createElement('button');
+      change.type = 'button';
+      change.className = 'wizard-review-change';
+      change.textContent = 'Change';
+      change.setAttribute('aria-label', `Change ${row.label.toLowerCase()}`);
+      change.addEventListener('click', () => {
+        goToStep(row.step);
+        const target = row.field === 'type'
+          ? form.querySelector('input[name="type"]')
+          : getField(row.field);
+        target?.focus();
+      });
+      dd.append(change);
+
+      wrap.append(dt, dd);
+      reviewList.append(wrap);
+    });
+  };
+
+  // --- step navigation ----------------------------------------------------
+  function goToStep(step) {
+    currentStep = Math.min(Math.max(step, 1), totalSteps);
+    clearErrors();
+
+    steps.forEach((node) => {
+      node.classList.toggle('hidden', Number(node.dataset.step) !== currentStep);
+    });
+
+    const isLast = currentStep === totalSteps;
+    nextBtn?.classList.toggle('hidden', isLast);
+    submitBtn?.classList.toggle('hidden', !isLast);
+    backBtn?.classList.toggle('hidden', currentStep === 1);
+
+    if (progressLabel) progressLabel.textContent = `Step ${currentStep} of ${totalSteps}`;
+    if (progressBar) progressBar.setAttribute('aria-valuenow', String(currentStep));
+    if (progressFill) progressFill.style.width = `${(currentStep / totalSteps) * 100}%`;
+
+    if (isLast) {
+      renderReview();
+      renderCaptcha();
+    }
+
+    // Move focus to the step heading so screen readers announce the new step
+    // and keyboard users do not land back at the top of the document.
+    const heading = steps.find((node) => Number(node.dataset.step) === currentStep)
+      ?.querySelector('.wizard-step-heading');
+    if (heading) {
+      heading.setAttribute('tabindex', '-1');
+      heading.focus();
+    }
+    card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+
+    saveDraft();
+  }
+
+  const showWizard = () => {
+    intro.classList.add('hidden');
+    card.classList.remove('hidden');
+    goToStep(currentStep);
+  };
+
+  startBtn?.addEventListener('click', showWizard);
+
+  nextBtn?.addEventListener('click', () => {
+    const errors = validateStep(currentStep);
+    if (errors.length > 0) {
+      showErrorSummary(errors);
+      return;
+    }
+    // Tidy what they typed before moving on, so the review page shows the
+    // cleaned-up version and there are no surprises at the end.
+    const url = getField('postingUrl');
+    if (url && url.value.trim()) url.value = normalizeUrl(url.value);
+
+    goToStep(currentStep + 1);
+  });
+
+  backBtn?.addEventListener('click', () => goToStep(currentStep - 1));
+
+  form.addEventListener('input', saveDraft);
+  form.addEventListener('change', saveDraft);
+
+  // Enter anywhere in the form advances the step instead of submitting early.
+  form.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const target = event.target;
+    if (target instanceof HTMLTextAreaElement) return;
+    if (currentStep !== totalSteps) {
+      event.preventDefault();
+      nextBtn?.click();
+    }
+  });
+
+  // --- submit -------------------------------------------------------------
+  const setSubmitting = (value) => {
+    isSubmitting = value;
+    if (submitBtn) {
+      submitBtn.disabled = value;
+      submitBtn.textContent = value ? 'Sending...' : 'Send my job listing';
+    }
+    if (backBtn) backBtn.disabled = value;
+  };
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const errors = validateStep(totalSteps);
+    if (errors.length > 0) {
+      showErrorSummary(errors);
+      return;
+    }
+
+    const baseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
+    const anonKey = globalThis.APP_CONFIG?.supabaseAnonKey || '';
+    if (!baseUrl) {
+      showErrorSummary([{ id: 'captcha', message: 'This form is not set up yet. Please email jobs@thejumpvault.com.' }]);
+      return;
+    }
+
+    const value = (id) => (getField(id)?.value || '').trim();
+    setSubmitting(true);
+
+    try {
+      const resp = await fetch(`${baseUrl}/functions/v1/submit-job-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
+          captchaToken: getCaptchaToken(),
+          contactName: value('contactName'),
+          contactEmail: value('contactEmail'),
+          contactPhone: formatUsPhone(value('contactPhone')),
+          organization: value('organization'),
+          role: value('role'),
+          details: value('details'),
+          state: value('state'),
+          city: value('city'),
+          county: value('county'),
+          type: getSelectedType(),
+          postingUrl: value('postingUrl') ? normalizeUrl(value('postingUrl')) : '',
+          phone: formatUsPhone(value('phone')),
+          pay: normalizePay(value('pay')),
+          benefits: [...benefits],
+          wantsSponsorship: Boolean(getField('wantsSponsorship')?.checked),
+        }),
+      });
+
+      const result = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        setSubmitting(false);
+        if (globalThis.hcaptcha && captchaRendered) {
+          try { globalThis.hcaptcha.reset(); } catch { /* non-fatal */ }
+        }
+
+        const fieldErrors = result?.fieldErrors;
+        if (fieldErrors && typeof fieldErrors === 'object') {
+          const mapped = Object.entries(fieldErrors).map(([id, message]) => ({ id, message: String(message) }));
+          showErrorSummary(mapped);
+          return;
+        }
+
+        showErrorSummary([{
+          id: 'captcha',
+          message: result?.error || 'We could not send your listing. Please try again in a moment.',
+        }]);
+        return;
+      }
+
+      clearDraft();
+      card.classList.add('hidden');
+      done.classList.remove('hidden');
+
+      const lead = document.getElementById('wizardDoneLead');
+      if (lead && result?.duplicate) {
+        lead.textContent = 'We already had this request on file, so we have not created a second one. '
+          + 'A staff member is reviewing it and will be in touch.';
+      }
+      done.focus();
+      done.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    } catch {
+      setSubmitting(false);
+      showErrorSummary([{
+        id: 'captcha',
+        message: 'We could not reach the server. Check your internet connection and try again.',
+      }]);
+    }
+  });
+
+  const hadDraft = restoreDraft();
+  if (hadDraft) {
+    // Someone came back to an unfinished form — skip the intro and say so.
+    showWizard();
+    const note = document.getElementById('wizardSaveNote');
+    if (note) note.textContent = 'We brought back the answers you already filled in.';
+  }
+
+}
+
+// Staff review queue at /review-requests.
+//
+// Built for people who do not use the site every day: one request per card,
+// everything readable without clicking, and exactly two actions per card.
+// Nodes are built with the DOM rather than innerHTML because this page renders
+// text typed by anonymous members of the public.
+function initReviewRequestsPage() {
+  const list = document.getElementById('requestsList');
+  const empty = document.getElementById('requestsEmpty');
+  if (!list || !empty) {
+    return;
+  }
+
+  const message = document.getElementById('requestsMessage');
+  const refreshBtn = document.getElementById('refreshRequestsBtn');
+  const tabs = Array.from(document.querySelectorAll('.requests-tab'));
+  const counts = {
+    pending: document.getElementById('countPending'),
+    approved: document.getElementById('countApproved'),
+    rejected: document.getElementById('countRejected'),
+  };
+
+  const publishModal = document.getElementById('publishModal');
+  const publishForm = document.getElementById('publishForm');
+  const publishRole = document.getElementById('publishModalRole');
+  const publishCategory = document.getElementById('publishCategory');
+  const publishSponsored = document.getElementById('publishSponsored');
+  const publishSponsorHint = document.getElementById('publishSponsorHint');
+  const publishMessage = document.getElementById('publishMessage');
+
+  const declineModal = document.getElementById('declineModal');
+  const declineForm = document.getElementById('declineForm');
+  const declineRole = document.getElementById('declineModalRole');
+  const declineNote = document.getElementById('declineNote');
+  const declineMessage = document.getElementById('declineMessage');
+
+  let requests = [];
+  let activeStatus = 'pending';
+  let activeRequest = null;
+  let isWorking = false;
+
+  const setMessage = (text, isError = false) => {
+    if (!message) return;
+    message.textContent = text || '';
+    message.classList.toggle('error', Boolean(isError));
+  };
+
+  const formatWhen = (iso) => {
+    if (!iso) return 'Unknown date';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return 'Unknown date';
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+  };
+
+  const titleCase = (slug) => slug
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+  // Category list is assembled from the same places the jobs page uses, so the
+  // dropdown here matches the Job Type tabs staff already know.
+  const loadCategories = async () => {
+    const found = new Map([['pta', 'Physical Therapy Assistant']]);
+
+    try {
+      const custom = JSON.parse(localStorage.getItem('studentJobHubJobTypes') || '{}');
+      Object.entries(custom).forEach(([slug, meta]) => {
+        if (slug) found.set(slug, meta?.label || titleCase(slug));
+      });
+    } catch {
+      // Fall through to whatever the database knows about.
+    }
+
+    try {
+      const { data } = await teacherAuthState.supabase.from('jobs').select('category');
+      (data || []).forEach((row) => {
+        const slug = (row.category || '').trim();
+        if (slug && !found.has(slug)) found.set(slug, titleCase(slug));
+      });
+    } catch {
+      // Non-fatal — the built-in category is always available.
+    }
+
+    if (!publishCategory) return;
+    publishCategory.innerHTML = '';
+    found.forEach((label, slug) => {
+      const option = document.createElement('option');
+      option.value = slug;
+      option.textContent = label;
+      publishCategory.append(option);
+    });
+  };
+
+  // --- rendering ----------------------------------------------------------
+  const detailRow = (label, value, options = {}) => {
+    if (!value) return null;
+    const row = document.createElement('div');
+    row.className = 'request-detail';
+
+    const dt = document.createElement('span');
+    dt.className = 'request-detail-label';
+    dt.textContent = label;
+
+    const dd = document.createElement('span');
+    dd.className = 'request-detail-value';
+
+    if (options.href) {
+      const link = document.createElement('a');
+      link.href = options.href;
+      link.textContent = value;
+      if (options.external) {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+      }
+      dd.append(link);
+    } else {
+      dd.textContent = value;
+    }
+
+    row.append(dt, dd);
+    return row;
+  };
+
+  const buildCard = (request) => {
+    const card = document.createElement('article');
+    card.className = 'request-card';
+    if (request.wants_sponsorship) card.classList.add('wants-sponsor');
+
+    // Header
+    const head = document.createElement('div');
+    head.className = 'request-head';
+
+    const titleWrap = document.createElement('div');
+    const org = document.createElement('p');
+    org.className = 'request-org';
+    org.textContent = request.organization || 'Unknown organization';
+    const role = document.createElement('h2');
+    role.className = 'request-role';
+    role.textContent = request.role || 'Untitled job';
+    titleWrap.append(org, role);
+
+    const when = document.createElement('p');
+    when.className = 'request-when';
+    when.textContent = `Sent ${formatWhen(request.created_at)}`;
+
+    head.append(titleWrap, when);
+    card.append(head);
+
+    if (request.wants_sponsorship) {
+      const flag = document.createElement('p');
+      flag.className = 'request-sponsor-flag';
+      flag.textContent = 'This employer asked about featuring the job at the top of the list.';
+      card.append(flag);
+    }
+
+    // Description
+    const description = document.createElement('p');
+    description.className = 'request-description';
+    description.textContent = request.details || 'No description given.';
+    card.append(description);
+
+    // Details grid
+    const details = document.createElement('div');
+    details.className = 'request-details';
+    [
+      detailRow('Location', request.location
+        || buildLocationLabel(request.city, request.county, request.state)),
+      detailRow('County', request.city && request.county ? request.county : ''),
+      detailRow('Type of work', request.type),
+      detailRow('Hourly pay', request.pay == null ? '' : `$${Number(request.pay).toFixed(2)}`),
+      detailRow('Phone for students', request.phone, { href: `tel:${String(request.phone).replace(/\D/g, '')}` }),
+      detailRow('Their posting', request.posting_url, { href: request.posting_url, external: true }),
+      detailRow('Benefits', Array.isArray(request.benefits) && request.benefits.length
+        ? request.benefits.join(', ')
+        : ''),
+    ].filter(Boolean).forEach((row) => details.append(row));
+    card.append(details);
+
+    // Who sent it
+    const contact = document.createElement('div');
+    contact.className = 'request-contact';
+    const contactTitle = document.createElement('h3');
+    contactTitle.textContent = 'Who sent this';
+    contact.append(contactTitle);
+
+    const contactGrid = document.createElement('div');
+    contactGrid.className = 'request-details';
+    [
+      detailRow('Name', request.contact_name),
+      detailRow('Email', request.contact_email, { href: `mailto:${request.contact_email}` }),
+      detailRow('Phone', request.contact_phone, { href: `tel:${String(request.contact_phone).replace(/\D/g, '')}` }),
+    ].filter(Boolean).forEach((row) => contactGrid.append(row));
+    contact.append(contactGrid);
+    card.append(contact);
+
+    // Review trail for anything already handled
+    if (request.status !== 'pending') {
+      const trail = document.createElement('p');
+      trail.className = 'request-trail';
+      const verb = request.status === 'approved' ? 'Published' : 'Declined';
+      trail.textContent = `${verb} on ${formatWhen(request.reviewed_at)}`
+        + (request.review_note ? ` — ${request.review_note}` : '');
+      card.append(trail);
+    }
+
+    // Actions
+    if (request.status === 'pending') {
+      const actions = document.createElement('div');
+      actions.className = 'request-actions';
+
+      const publishBtn = document.createElement('button');
+      publishBtn.type = 'button';
+      publishBtn.className = 'btn btn-primary request-action-btn';
+      publishBtn.textContent = 'Publish this job';
+      publishBtn.addEventListener('click', () => openPublishModal(request));
+
+      const declineBtn = document.createElement('button');
+      declineBtn.type = 'button';
+      declineBtn.className = 'btn btn-muted request-action-btn';
+      declineBtn.textContent = 'Decline';
+      declineBtn.addEventListener('click', () => openDeclineModal(request));
+
+      actions.append(publishBtn, declineBtn);
+      card.append(actions);
+    }
+
+    return card;
+  };
+
+  const emptyTextFor = (status) => ({
+    pending: 'Nothing is waiting for you right now. When an employer sends a job in, it will appear here.',
+    approved: 'No published requests yet.',
+    rejected: 'No declined requests.',
+  }[status] || 'Nothing here.');
+
+  const render = () => {
+    const visible = requests.filter((request) => request.status === activeStatus);
+
+    Object.entries(counts).forEach(([status, node]) => {
+      if (node) node.textContent = String(requests.filter((r) => r.status === status).length);
+    });
+
+    list.innerHTML = '';
+    if (visible.length === 0) {
+      empty.textContent = emptyTextFor(activeStatus);
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    empty.classList.add('hidden');
+    visible.forEach((request) => list.append(buildCard(request)));
+  };
+
+  // --- data ---------------------------------------------------------------
+  const loadRequests = async () => {
+    if (!teacherAuthState.supabase || !teacherAuthState.session) {
+      empty.textContent = 'Please sign in to see job requests.';
+      return;
+    }
+
+    empty.textContent = 'Loading...';
+    empty.classList.remove('hidden');
+
+    try {
+      const { data, error } = await teacherAuthState.supabase
+        .from('job_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        setMessage('We could not load the job requests. Please refresh the page.', true);
+        empty.textContent = 'Could not load job requests.';
+        return;
+      }
+
+      requests = Array.isArray(data) ? data : [];
+      setMessage('');
+      render();
+    } catch {
+      setMessage('We could not reach the server. Check your internet connection.', true);
+      empty.textContent = 'Could not load job requests.';
+    }
+  };
+
+  // --- modals -------------------------------------------------------------
+  const setModalOpen = (modal, open) => {
+    if (!modal) return;
+    modal.classList.toggle('open', open);
+    modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+    document.body.classList.toggle('modal-open', open);
+  };
+
+  function openPublishModal(request) {
+    activeRequest = request;
+    if (publishRole) {
+      publishRole.textContent = `${request.role} — ${request.organization}`;
+    }
+    if (publishSponsored) publishSponsored.checked = false;
+    if (publishSponsorHint) {
+      publishSponsorHint.textContent = request.wants_sponsorship
+        ? 'This employer asked about featuring. Only tick this once they have paid.'
+        : 'Only tick this once the employer has paid for featured placement.';
+    }
+    if (publishMessage) publishMessage.textContent = '';
+    setModalOpen(publishModal, true);
+    publishCategory?.focus();
+  }
+
+  function openDeclineModal(request) {
+    activeRequest = request;
+    if (declineRole) {
+      declineRole.textContent = `${request.role} — ${request.organization}`;
+    }
+    if (declineNote) declineNote.value = '';
+    if (declineMessage) declineMessage.textContent = '';
+    setModalOpen(declineModal, true);
+    declineNote?.focus();
+  }
+
+  document.querySelectorAll('[data-close-publish]').forEach((node) => {
+    node.addEventListener('click', () => setModalOpen(publishModal, false));
+  });
+  document.querySelectorAll('[data-close-decline]').forEach((node) => {
+    node.addEventListener('click', () => setModalOpen(declineModal, false));
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    setModalOpen(publishModal, false);
+    setModalOpen(declineModal, false);
+  });
+
+  // --- actions ------------------------------------------------------------
+  publishForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (isWorking || !activeRequest) return;
+
+    const confirmBtn = document.getElementById('confirmPublishBtn');
+    isWorking = true;
+    if (confirmBtn) confirmBtn.disabled = true;
+    if (publishMessage) publishMessage.textContent = 'Publishing...';
+
+    const request = activeRequest;
+    const jobId = `job-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const city = (request.city || '').trim();
+    const county = (request.county || '').trim();
+    const state = (request.state || '').trim();
+
+    try {
+      const { error: insertError } = await teacherAuthState.supabase.from('jobs').insert({
+        id: jobId,
+        entry_mode: request.posting_url ? 'url' : 'template',
+        role: request.role,
+        organization: request.organization,
+        location: request.location || buildLocationLabel(city, county, state),
+        state,
+        city,
+        county,
+        type: request.type,
+        category: publishCategory?.value || 'pta',
+        details: request.details,
+        source_label: 'employer request',
+        posting_url: request.posting_url || '',
+        phone: request.phone || '',
+        pay: request.pay,
+        benefits: Array.isArray(request.benefits) ? request.benefits : [],
+        posted_by: request.organization || '',
+        is_sponsored: Boolean(publishSponsored?.checked),
+        created_by: teacherAuthState.session?.user?.id || null,
+      });
+
+      if (insertError) {
+        if (publishMessage) publishMessage.textContent = 'We could not publish it. Please try again.';
+        isWorking = false;
+        if (confirmBtn) confirmBtn.disabled = false;
+        return;
+      }
+
+      // Mark the request handled. If this second write fails the job is already
+      // live, so say so plainly rather than implying nothing happened.
+      const { error: updateError } = await teacherAuthState.supabase
+        .from('job_requests')
+        .update({
+          status: 'approved',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: teacherAuthState.session?.user?.id || null,
+          published_job_id: jobId,
+        })
+        .eq('id', request.id);
+
+      setModalOpen(publishModal, false);
+      isWorking = false;
+      if (confirmBtn) confirmBtn.disabled = false;
+
+      if (updateError) {
+        setMessage(
+          `"${request.role}" is now on the jobs page, but we could not tick it off this list. `
+          + 'Press Refresh — if it is still here, you can safely ignore it.',
+          true,
+        );
+      } else {
+        setMessage(`"${request.role}" is now on the jobs page.`);
+      }
+
+      await loadRequests();
+    } catch {
+      isWorking = false;
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (publishMessage) publishMessage.textContent = 'We could not reach the server. Please try again.';
+    }
+  });
+
+  declineForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (isWorking || !activeRequest) return;
+
+    const confirmBtn = document.getElementById('confirmDeclineBtn');
+    isWorking = true;
+    if (confirmBtn) confirmBtn.disabled = true;
+    if (declineMessage) declineMessage.textContent = 'Declining...';
+
+    const request = activeRequest;
+
+    try {
+      const { error } = await teacherAuthState.supabase
+        .from('job_requests')
+        .update({
+          status: 'rejected',
+          review_note: (declineNote?.value || '').trim().slice(0, 500),
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: teacherAuthState.session?.user?.id || null,
+        })
+        .eq('id', request.id);
+
+      isWorking = false;
+      if (confirmBtn) confirmBtn.disabled = false;
+
+      if (error) {
+        if (declineMessage) declineMessage.textContent = 'We could not decline it. Please try again.';
+        return;
+      }
+
+      setModalOpen(declineModal, false);
+      setMessage(`"${request.role}" was declined.`);
+      await loadRequests();
+    } catch {
+      isWorking = false;
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (declineMessage) declineMessage.textContent = 'We could not reach the server. Please try again.';
+    }
+  });
+
+  // --- tabs ---------------------------------------------------------------
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      activeStatus = tab.dataset.status || 'pending';
+      tabs.forEach((other) => {
+        const isActive = other === tab;
+        other.classList.toggle('active', isActive);
+        other.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      render();
+    });
+  });
+
+  refreshBtn?.addEventListener('click', loadRequests);
+
+  onTeacherAuthChange((authState) => {
+    if (authState.loading) return;
+    if (!authState.configured || !authState.session) {
+      empty.textContent = 'Please sign in to see job requests.';
+      empty.classList.remove('hidden');
+      return;
+    }
+    loadCategories();
+    loadRequests();
+  });
+}
+
+// Badge on the settings menu so staff notice new requests without going looking.
+// Count only; the page itself is the source of truth.
+async function refreshPendingRequestCount() {
+  const badge = document.getElementById('requestCountBadge');
+  if (!badge || !teacherAuthState.supabase || !teacherAuthState.session) {
+    return;
+  }
+
+  try {
+    const { count, error } = await teacherAuthState.supabase
+      .from('job_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    if (error || !count) {
+      badge.classList.add('hidden');
+      badge.textContent = '';
+      return;
+    }
+
+    badge.textContent = String(count);
+    badge.classList.remove('hidden');
+  } catch {
+    badge.classList.add('hidden');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -3302,4 +4637,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initActiveNav();
   initQuickGuideTooltip();
   initJobsModal();
+  initRequestListingWizard();
+  initReviewRequestsPage();
 });

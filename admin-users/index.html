@@ -14,7 +14,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260804y" />
+    <link rel="stylesheet" href="/styles.css?v=20260917g" />
   </head>
   <body data-page="admin-users">
     <header class="site-header">
@@ -94,6 +94,9 @@
               <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
               <button class="settings-link hidden" id="profileButton" type="button">User</button>
+              <a class="settings-link hidden" id="reviewRequestsButton" href="/review-requests">
+                Job Requests<span class="settings-link-count hidden" id="requestCountBadge"></span>
+              </a>
               <a class="settings-link hidden" id="manageUsersButton" href="/admin-users">Manage Users</a>
             </div>
           </div>
@@ -136,9 +139,9 @@
                   <input id="newUserLastName" type="text" autocomplete="off" />
                 </div>
               </div>
-              <label for="newUserEmail">Email</label>
+              <label for="newUserEmail">Email<span class="required-mark" aria-hidden="true">*</span></label>
               <input id="newUserEmail" type="email" autocomplete="off" required />
-              <label for="temporaryPassword">Temporary Password</label>
+              <label for="temporaryPassword">Temporary Password<span class="required-mark" aria-hidden="true">*</span></label>
               <input id="temporaryPassword" type="text" placeholder="At least 8 characters" autocomplete="off" required />
               <button class="btn btn-primary" type="submit" id="createUserBtn">Create User</button>
             </form>
@@ -234,7 +237,7 @@
           </div>
           <div id="profilePanelPassword" hidden>
             <form id="profilePwForm" class="auth-form profile-modal-form">
-              <label for="profileNewPw">New Password</label>
+              <label for="profileNewPw">New Password<span class="required-mark" aria-hidden="true">*</span></label>
               <input id="profileNewPw" type="password" autocomplete="new-password" required />
               <div class="pw-strength-bar" aria-hidden="true">
                 <div id="profilePwFill" class="pw-strength-fill"></div>
@@ -246,7 +249,7 @@
                 <li id="profile-req-number" class="pw-req">One number (0&ndash;9)</li>
                 <li id="profile-req-special" class="pw-req">One special character (!@#$&hellip;)</li>
               </ul>
-              <label for="profileConfirmPw">Confirm Password</label>
+              <label for="profileConfirmPw">Confirm Password<span class="required-mark" aria-hidden="true">*</span></label>
               <input id="profileConfirmPw" type="password" autocomplete="new-password" required />
               <p class="pw-match-msg" id="profilePwMatch" aria-live="polite"></p>
               <button class="btn btn-primary" type="submit" id="profilePwSave" disabled>Update Password</button>
@@ -258,7 +261,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/app-config.js?v=20260713d"></script>
-    <script src="/script.js?v=20260804o"></script>
+    <script src="/app-config.js?v=20260917g"></script>
+    <script src="/script.js?v=20260917g"></script>
   </body>
 </html>

@@ -17,7 +17,7 @@
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/assets/jump-vault-logo.png" type="image/png" />
-    <link rel="stylesheet" href="/styles.css?v=20260804y" />
+    <link rel="stylesheet" href="/styles.css?v=20260917g" />
   </head>
   <body data-page="jobs">
     <header class="site-header">
@@ -97,6 +97,9 @@
               <p class="settings-user hidden" id="settingsUserStatus" hidden></p>
               <button class="settings-auth-btn" id="authActionButton" type="button">Sign In</button>
               <button class="settings-link hidden" id="profileButton" type="button">User</button>
+              <a class="settings-link hidden" id="reviewRequestsButton" href="/review-requests">
+                Job Requests<span class="settings-link-count hidden" id="requestCountBadge"></span>
+              </a>
               <a class="settings-link hidden" id="manageUsersButton" href="/admin-users">Manage Users</a>
             </div>
           </div>
@@ -144,6 +147,11 @@
                     <button class="btn btn-primary" id="openUpload" type="button">
                       Upload Job Listing
                     </button>
+                    <!-- Public route for employers. Shown only to signed-out
+                         visitors; staff post directly with Upload instead. -->
+                    <a class="btn btn-primary btn-request-listing hidden" id="requestListingLink" href="/request-listing">
+                      Request Job Listing
+                    </a>
                     <div class="guide-tooltip-wrap">
                       <button
                         class="btn btn-muted guide-trigger"
@@ -320,6 +328,7 @@
           </button>
         </div>
 
+        <p class="required-note"><span class="required-mark" aria-hidden="true">*</span> means this field is needed</p>
         <div class="tab-row" role="tablist" aria-label="Upload options">
           <button class="tab-btn" data-target="urlPanel" role="tab" aria-selected="true" type="button">
             Upload by URL
@@ -333,7 +342,7 @@
           <form id="urlForm">
             <div class="form-grid">
               <div class="field full">
-                <label for="listingJobType">Job Type</label>
+                <label for="listingJobType">Job Type<span class="required-mark" aria-hidden="true">*</span></label>
                 <select id="listingJobType" name="listingJobType" required>
                 </select>
                 <p class="upload-job-type-note" id="listingJobTypeNote">
@@ -341,19 +350,19 @@
                 </p>
               </div>
               <div class="field full">
-                <label for="urlRoleTitle">Job Title</label>
+                <label for="urlRoleTitle">Job Title<span class="required-mark" aria-hidden="true">*</span></label>
                 <input id="urlRoleTitle" name="urlRoleTitle" type="text" placeholder="PTA Rehab Technician" required />
               </div>
               <div class="field full">
-                <label for="jobUrl">Job Posting URL</label>
+                <label for="jobUrl">Job Posting URL<span class="required-mark" aria-hidden="true">*</span></label>
                 <input id="jobUrl" name="jobUrl" type="url" placeholder="https://exampleclinic.com/careers/pta-role" required />
               </div>
               <div class="field full">
-                <label for="urlOrganization">Organization</label>
+                <label for="urlOrganization">Organization<span class="required-mark" aria-hidden="true">*</span></label>
                 <input id="urlOrganization" name="urlOrganization" type="text" placeholder="Clinic or Healthcare Organization" required />
               </div>
               <div class="field">
-                <label for="urlState">State</label>
+                <label for="urlState">State<span class="required-mark" aria-hidden="true">*</span></label>
                 <select id="urlState" name="urlState" required>
                   <option value="">Select state</option>
                   <option value="ID">Idaho</option>
@@ -361,10 +370,18 @@
                 </select>
               </div>
               <div class="field">
-                <label for="urlCity">City</label>
-                <select id="urlCity" name="urlCity" required disabled>
-                  <option value="">Select city</option>
+                <label for="urlCity">City<span class="required-mark" aria-hidden="true">*</span></label>
+                <p class="field-hint">City or county &mdash; you only need one.</p>
+                <select id="urlCity" name="urlCity" disabled>
+                  <option value="">Select state first</option>
                 </select>
+              </div>
+              <div class="field">
+                <label for="urlCounty">County</label>
+                <select id="urlCounty" name="urlCounty" disabled>
+                  <option value="">Select state first</option>
+                </select>
+                <p class="field-hint">Fills in automatically when you pick a city.</p>
               </div>
             </div>
             <div class="form-actions">
@@ -378,7 +395,7 @@
           <form id="templateForm">
             <div class="form-grid">
               <div class="field full">
-                <label for="listingJobTypeTemplate">Job Type</label>
+                <label for="listingJobTypeTemplate">Job Type<span class="required-mark" aria-hidden="true">*</span></label>
                 <select id="listingJobTypeTemplate" name="listingJobTypeTemplate" required>
                 </select>
                 <p class="upload-job-type-note" id="listingJobTypeTemplateNote">
@@ -386,15 +403,15 @@
                 </p>
               </div>
               <div class="field">
-                <label for="role">Role Title</label>
+                <label for="role">Role Title<span class="required-mark" aria-hidden="true">*</span></label>
                 <input id="role" name="role" type="text" placeholder="PTA Student Assistant" required />
               </div>
               <div class="field">
-                <label for="organization">Organization</label>
+                <label for="organization">Organization<span class="required-mark" aria-hidden="true">*</span></label>
                 <input id="organization" name="organization" type="text" placeholder="Organization name" required />
               </div>
               <div class="field">
-                <label for="state">State</label>
+                <label for="state">State<span class="required-mark" aria-hidden="true">*</span></label>
                 <select id="state" name="state" required>
                   <option value="">Select state</option>
                   <option value="ID">Idaho</option>
@@ -402,13 +419,21 @@
                 </select>
               </div>
               <div class="field">
-                <label for="city">City</label>
-                <select id="city" name="city" required disabled>
-                  <option value="">Select city</option>
+                <label for="city">City<span class="required-mark" aria-hidden="true">*</span></label>
+                <p class="field-hint">City or county &mdash; you only need one.</p>
+                <select id="city" name="city" disabled>
+                  <option value="">Select state first</option>
                 </select>
               </div>
               <div class="field">
-                <label for="employmentType">Employment Type</label>
+                <label for="county">County</label>
+                <select id="county" name="county" disabled>
+                  <option value="">Select state first</option>
+                </select>
+                <p class="field-hint">Fills in automatically when you pick a city.</p>
+              </div>
+              <div class="field">
+                <label for="employmentType">Employment Type<span class="required-mark" aria-hidden="true">*</span></label>
                 <select id="employmentType" name="employmentType" required>
                   <option value="">Select type</option>
                   <option value="Part-Time">Part-Time</option>
@@ -418,20 +443,30 @@
                 </select>
               </div>
               <div class="field full">
-                <label for="description">Job Description</label>
+                <label for="description">Job Description<span class="required-mark" aria-hidden="true">*</span></label>
                 <textarea id="description" name="description" placeholder="Describe duties, required skills, and ideal student profile." required></textarea>
               </div>
               <div class="field">
-                <label for="contactPhone">Contact Phone</label>
-                <input id="contactPhone" name="contactPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" pattern="\(\d{3}\) \d{3}-\d{4}" placeholder="(208) 555-0123" />
+                <label for="contactPhone">Contact Phone <span class="field-optional">(optional)</span></label>
+                <!-- No pattern attribute: the field formats itself as you type, and a
+                     strict pattern only produces "match the requested format" tooltips
+                     on partly-typed numbers. -->
+                <input id="contactPhone" name="contactPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" placeholder="(208) 555-0123" />
+                <p class="field-hint">Type it any way you like &mdash; we tidy it up for you.</p>
               </div>
               <div class="field">
-                <label for="payRate">Pay</label>
+                <label for="payRate">Pay <span class="field-optional">(optional)</span></label>
                 <input id="payRate" name="payRate" type="number" min="0" step="0.01" placeholder="25.00" />
               </div>
               <div class="field full">
-                <label for="benefitInput">Benefits</label>
-                <input id="benefitInput" name="benefitInput" type="text" placeholder="Type a benefit and press Enter" />
+                <label for="benefitInput">Benefits <span class="field-optional">(optional)</span></label>
+                <p class="field-hint">Add them one at a time, for example "Flexible hours".</p>
+                <!-- Visible Add button: "press Enter" is invisible to anyone who
+                     does not already know the convention. Enter still works. -->
+                <div class="field-add-row">
+                  <input id="benefitInput" name="benefitInput" type="text" placeholder="Flexible hours" />
+                  <button class="btn btn-muted field-add-btn" type="button" id="addBenefitStaffBtn">Add</button>
+                </div>
                 <ul class="benefits-editor-list" id="benefitsEditorList" aria-live="polite"></ul>
               </div>
             </div>
@@ -457,7 +492,7 @@
         </div>
         <form id="addJobTypeForm" class="auth-form" style="padding: 0 1.15rem 1.2rem;">
           <div class="field full">
-            <label for="newJobTypeName">Job Type Name</label>
+            <label for="newJobTypeName">Job Type Name<span class="required-mark" aria-hidden="true">*</span></label>
             <input
               id="newJobTypeName"
               name="newJobTypeName"
@@ -568,7 +603,7 @@
           </div>
           <div id="profilePanelPassword" hidden>
             <form id="profilePwForm" class="auth-form profile-modal-form">
-              <label for="profileNewPw">New Password</label>
+              <label for="profileNewPw">New Password<span class="required-mark" aria-hidden="true">*</span></label>
               <input id="profileNewPw" type="password" autocomplete="new-password" required />
               <div class="pw-strength-bar" aria-hidden="true">
                 <div id="profilePwFill" class="pw-strength-fill"></div>
@@ -580,7 +615,7 @@
                 <li id="profile-req-number" class="pw-req">One number (0–9)</li>
                 <li id="profile-req-special" class="pw-req">One special character (!@#$…)</li>
               </ul>
-              <label for="profileConfirmPw">Confirm Password</label>
+              <label for="profileConfirmPw">Confirm Password<span class="required-mark" aria-hidden="true">*</span></label>
               <input id="profileConfirmPw" type="password" autocomplete="new-password" required />
               <p class="pw-match-msg" id="profilePwMatch" aria-live="polite"></p>
               <button class="btn btn-primary" type="submit" id="profilePwSave" disabled>Update Password</button>
@@ -592,7 +627,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/app-config.js?v=20260713d"></script>
-    <script src="/script.js?v=20260804o"></script>
+    <script src="/location-data.js?v=20260917g"></script>
+    <script src="/app-config.js?v=20260917g"></script>
+    <script src="/script.js?v=20260917g"></script>
   </body>
 </html>
