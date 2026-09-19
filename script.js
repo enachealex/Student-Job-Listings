@@ -4028,7 +4028,10 @@ function initRequestListingWizard() {
     const baseUrl = (globalThis.APP_CONFIG?.supabaseUrl || '').replace(/\/$/, '');
     const anonKey = globalThis.APP_CONFIG?.supabaseAnonKey || '';
     if (!baseUrl) {
-      showErrorSummary([{ id: 'captcha', message: 'This form is not set up yet. Please email jobs@thejumpvault.com.' }]);
+      showErrorSummary([{
+        id: 'captcha',
+        message: 'This form is not set up yet, so we cannot send your listing. Please try again later.',
+      }]);
       return;
     }
 
